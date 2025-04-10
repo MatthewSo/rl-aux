@@ -25,7 +25,7 @@ import sys
 
 # Define VGG net
 class VGG16(nn.Module):
-    def __init__(self, psi):
+    def __init__(self, primary_task_output, auxiliary_task_output):
         super(VGG16, self).__init__()
         """
             multi-task network:
@@ -44,14 +44,14 @@ class VGG16(nn.Module):
         self.classifier1 = nn.Sequential(
             nn.Linear(filter[-1], filter[-1]),
             nn.ReLU(inplace=True),
-            nn.Linear(filter[-1], len(psi)),
+            nn.Linear(filter[-1], primary_task_output)
         )
 
         # auxiliary task prediction
         self.classifier2 = nn.Sequential(
             nn.Linear(filter[-1], filter[-1]),
             nn.ReLU(inplace=True),
-            nn.Linear(filter[-1], int(np.sum(psi))),
+            nn.Linear(filter[-1], auxiliary_task_output),
         )
 
         # apply weight initialisation
