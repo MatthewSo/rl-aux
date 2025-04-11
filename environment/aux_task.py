@@ -55,6 +55,7 @@ class AuxTaskEnv(gym.Env):
         self.reset_data_loader(self.seed)
         self.current_batch = None
         self.current_batch_index = 0
+        self.current_batch_aux_labels = []
 
         # create endless sampler for reward sampling
         sampler = RandomSampler(train_dataset, replacement=True,num_samples=sys.maxsize )
@@ -113,6 +114,7 @@ class AuxTaskEnv(gym.Env):
     def get_obs(self):
         if self.current_batch_index >= self.batch_size:
             self.current_batch_index = 0
+            self.current_batch_aux_labels = []
             try:
                 self.current_batch, self.current_labels = next(self.data_iter)
             except StopIteration:
@@ -147,6 +149,7 @@ class AuxTaskEnv(gym.Env):
 
         # Return the first batch as observations
         self.current_batch, self.current_labels = next(self.data_iter)
+        self.current_batch_aux_labels = []
         return self.get_obs()
 
 
