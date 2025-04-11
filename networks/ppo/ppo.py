@@ -1,16 +1,12 @@
-import gym
+import gymnasium as gym
 from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from torchvision import models
 import torch.nn as nn
 import numpy as np
-from gym import spaces
-from tqdm import tqdm
+from gymnasium import spaces
 from stable_baselines3 import PPO
-from create_dataset import CIFAR100,ImbalancedDatasetWrapper
-from sklearn.metrics import f1_score
-
 from networks.primary.vgg import VGG16
 
 class CustomFeatureExtractor(BaseFeaturesExtractor):
@@ -46,7 +42,7 @@ class ValueNet(nn.Module):
         x=x.squeeze(-1).mean(dim=-1)
         return x
 
-def get_ppo_agent( env, feature_dim, auxiliary_dim, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10, batch_size=64):
+def get_ppo_agent( env, feature_dim, auxiliary_dim, device, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10, batch_size=64):
     # Set up the RL PPO agent (of course other agent types may make sense too)
     policy_kwargs = {
         "features_extractor_class": CustomFeatureExtractor, #CustomFeatureExtractor,
@@ -55,6 +51,12 @@ def get_ppo_agent( env, feature_dim, auxiliary_dim, learning_rate=0.001,ent_coef
     }
 
     model = PPO("MultiInputPolicy", env, verbose=0, policy_kwargs=policy_kwargs,batch_size=batch_size, learning_rate=learning_rate,ent_coef=ent_coef,n_steps=n_steps,n_epochs=n_epochs)
-    model.policy.action_net= ActionNet(feature_dim, auxiliary_dim).cuda()
-    model.policy.value_net=ValueNet(feature_dim).cuda()
+    action_net = ActionNet(feature_dim, auxiliary_dim)
+    action_net = action_net.to(device)
+    model.policy.action_net = action_net
+
+    value_net = ValueNet(feature_dim)
+    value_net = value_net.to(device)
+    model.policy.value_net = value_net
+
     return model

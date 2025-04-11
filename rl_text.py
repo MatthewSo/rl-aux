@@ -1,5 +1,4 @@
-
-import gym
+import gymnasium as gym
 import torch
 import torch.nn as nn
 from stable_baselines3 import SAC
@@ -9,9 +8,8 @@ from torchvision import models
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from gym import spaces
+from gymnasium import spaces
 from torch.utils.data import DataLoader, RandomSampler, SubsetRandomSampler
-from tqdm import tqdm
 import copy
 import random
 import sys
@@ -368,7 +366,7 @@ def train_label_network_with_rl(model,env):
     model.learn(total_timesteps=episode_length)
 
 def train_main_network(model, env):
-    env.reward_mode=False
+    env.reward  _mode=False
     obs = env.reset()
     done = False
     while not done:

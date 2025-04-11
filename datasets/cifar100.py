@@ -123,3 +123,16 @@ class CIFAR100(Dataset):
 
     def __len__(self):
         return self.data_len
+
+class CoarseLabelCIFAR100(Dataset):
+    def __init__(self, cifar):
+        super().__init__()
+        self.cifar = cifar
+
+    def __len__(self):
+        return len(self.cifar)
+
+    def __getitem__(self, index):
+        image, labels = self.cifar[index]
+        coarse = labels[2]
+        return image, int(coarse)
