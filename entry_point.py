@@ -48,7 +48,7 @@ optimizer_callback = lambda x: torch.optim.Adam(x.parameters(), lr=PRIMARY_LEARN
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 
 env = AuxTaskEnv(
-    train_dataset=cifar100_train_loader,
+    train_dataset=course_cifar_train_set,
     device=device,
     model=primary_model,
     criterion=criterion,
@@ -67,7 +67,7 @@ auxilary_task_agent = get_ppo_agent(env=env,
                                     ent_coef=0.01,
                                     n_steps=79,
                                     n_epochs=10,
-                                    batch_size=BATCH_SIZE)
+                                    batch_size=10)
 
 print("Done Initializing PPO Agent")
 
@@ -79,5 +79,5 @@ train_auxilary_agent(
     device=device,
     test_loader=cifar100_test_loader,
     batch_size=BATCH_SIZE,
-    num_epochs=TOTAL_EPOCH,
+    total_epochs=TOTAL_EPOCH,
 )

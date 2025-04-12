@@ -6,8 +6,7 @@ from torch.utils.data import DataLoader, RandomSampler, SubsetRandomSampler
 import copy
 import random
 import sys
-
-from utils.evaluate import evaluate, f1_score_from_logits
+from utils.evaluate import evaluate
 from utils.masked_softmax import create_mask_from_labels, mask_softmax
 from utils.randomization import SeededSubsetRandomSampler
 from utils.vars import softmax
@@ -49,15 +48,13 @@ class AuxTaskEnv(gym.Env):
 
         # Define action and observation space
         image_obs = spaces.Box(low=0, high=1, shape=(3, 32, 32), dtype=np.float32)
-        label_obs = spaces.Box(low=0, high=100, shape=(100,), dtype=np.float32)
 
         self.observation_space = spaces.Dict({
             "image": image_obs,
-            "array": label_obs,
         })
 
         print(self.observation_space)
-        self.action_space = spaces.Box(low=-1, high=1, shape=(batch_size, aux_dim), dtype=np.float32)
+        self.action_space = spaces.Box(low=-1, high=1, shape=(aux_dim,), dtype=np.float32)
 
         # Model for the main classification task (reset this each episode)
         self.model=copy.deepcopy(self.cannonical_model).to(self.device)
@@ -113,12 +110,13 @@ class AuxTaskEnv(gym.Env):
         image =  self.current_batch.cpu()[self.current_batch_index]
         label = self.current_labels.cpu()[self.current_batch_index]
 
+        image = image.numpy().astype(np.float32)
+
         self.current_batch_index += 1
 
-        return {"image": image, "array": label}, done
+        return {"image": image}, done
 
-    def reset(self):
-
+    def reset(self, seed=None):
         # reset counters
         self.return_ = 0
         self.count = 0
@@ -139,7 +137,10 @@ class AuxTaskEnv(gym.Env):
         # Return the first batch as observations
         self.current_batch, self.current_labels = next(self.data_iter)
         self.current_batch_aux_labels = []
-        return self.get_obs()
+
+        obs, done = self.get_obs()
+
+        return obs, {}
 
 
     def step(self, action):
@@ -149,6 +150,10 @@ class AuxTaskEnv(gym.Env):
         self.current_batch_aux_labels.append(action)
 
         if len(self.current_batch_aux_labels) >= self.batch_size:
+            self.current_batch_aux_labels = [
+                torch.from_numpy(arr) if isinstance(arr, np.ndarray) else arr
+                for arr in self.current_batch_aux_labels
+            ]
             batch_action = torch.stack(self.current_batch_aux_labels, dim=0)
             self.current_batch_aux_labels = []
 
@@ -160,8 +165,8 @@ class AuxTaskEnv(gym.Env):
             mask=create_mask_from_labels(labels).to(self.device)
             aux_target=mask_softmax(torch.tensor(batch_action).to(self.device),mask,dim=-1)
 
-            loss_class   =  torch.mean(self.model.model_fit(softmax(primary_output), labels, pri=True,num_output=20))
-            loss_aux  =  torch.mean(self.model.model_fit(softmax(aux_output), aux_target,pri=False, num_output=100))
+            loss_class = torch.mean(self.model.model_fit(softmax(primary_output), labels, pri=True,num_output=20, device=self.device))
+            loss_aux = torch.mean(self.model.model_fit(softmax(aux_output), aux_target,pri=False, num_output=100, device=self.device))
 
             info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
 
@@ -183,7 +188,7 @@ class AuxTaskEnv(gym.Env):
                 self.return_ +=reward
 
         obs, done = self.get_obs()
-        return obs, reward, done, info
+        return obs, reward, done, False, info
 
     def render(self, mode='human'):
         pass  # Not needed for now
@@ -194,10 +199,10 @@ class AuxTaskEnv(gym.Env):
 
     def train_main_network(self, model):
         self.reward_mode=False
-        obs = self.reset()
+        obs, _info = self.reset()
         done = False
         while not done:
-            action, _states = model.predict(obs, deterministic=True)  # Use deterministic greedy actions
+            action, _states = model.predict(obs, deterministic=True)
             obs, reward, done, _info = self.step(action)
         self.update()
         self.reward_mode=True

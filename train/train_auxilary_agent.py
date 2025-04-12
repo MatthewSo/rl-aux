@@ -5,12 +5,12 @@ from train.model.performance import EpochPerformance
 from utils.vars import softmax
 
 
-def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epoch):
+def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs):
     epoch_performances = []
     epoch_performance = None
     num_test_batches = len(test_loader)
 
-    for index in range(total_epoch):
+    for index in range(total_epochs):
         primary_model.train()
         env.train_label_network_with_rl(aux_task_model)
         env.train_main_network(aux_task_model)

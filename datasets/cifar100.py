@@ -133,6 +133,6 @@ class CoarseLabelCIFAR100(Dataset):
         return len(self.cifar)
 
     def __getitem__(self, index):
-        image, labels = self.cifar[index]
+        image, labels = self.cifar.__getitem__(index)
         coarse = labels[2]
         return image, int(coarse)

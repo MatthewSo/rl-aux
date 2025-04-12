@@ -28,7 +28,9 @@ class ActionNet(nn.Module):
 
     def forward(self, x):
         x=x.reshape(-1,self.feature_dim)
-        return self.fc(x).reshape(-1, self.auxiliary_dim)
+        x = self.fc(x)
+        x = x.reshape(-1, self.auxiliary_dim)
+        return x
 
 class ValueNet(nn.Module):
     def __init__(self, feature_dim):
@@ -42,7 +44,7 @@ class ValueNet(nn.Module):
         x=x.squeeze(-1).mean(dim=-1)
         return x
 
-def get_ppo_agent( env, feature_dim, auxiliary_dim, device, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10, batch_size=64):
+def get_ppo_agent( env, feature_dim, auxiliary_dim, device, batch_size, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10):
     # Set up the RL PPO agent (of course other agent types may make sense too)
     policy_kwargs = {
         "features_extractor_class": CustomFeatureExtractor, #CustomFeatureExtractor,
