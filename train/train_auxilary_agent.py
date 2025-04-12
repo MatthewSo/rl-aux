@@ -12,8 +12,11 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
 
     for index in range(total_epochs):
         primary_model.train()
+        print("Starting Epoch: ", index)
         env.train_label_network_with_rl(aux_task_model)
+        print("Finished Training Auxiliary Task Model")
         env.train_main_network(aux_task_model)
+        print("Finished Training Main Network")
 
         primary_model=env.cannonical_model
         primary_model.eval()
@@ -47,4 +50,4 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
                 )
                 epoch_performances.append(epoch_performance)
 
-        print(epoch_performance)
+            print(epoch_performance)
