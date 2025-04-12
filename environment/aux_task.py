@@ -203,6 +203,6 @@ class AuxTaskEnv(gym.Env):
         done = False
         while not done:
             action, _states = model.predict(obs, deterministic=True)
-            obs, reward, done, _info = self.step(action)
+            obs, reward, done, trunc, _info = self.step(action)
         self.update()
         self.reward_mode=True
