@@ -197,7 +197,7 @@ class AuxTaskEnv(gym.Env):
         pass  # Not needed for now
 
     def train_label_network_with_rl(self, model):
-        episode_length = len(self.train_loader * self.batch_size)  # Total steps in an episode
+        episode_length = len(self.train_loader) * self.batch_size # Total steps in an episode
         model.learn(total_timesteps=episode_length)
 
     def train_main_network(self, model):
