@@ -50,7 +50,7 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
                 train_loss_auxiliary=0,
                 train_accuracy_primary=0,
                 train_accuracy_auxiliary=0,
-                test_loss_primary=test_loss1.mean().item(),
+                test_loss_primary=test_loss1,
                 test_loss_auxiliary=0,
                 test_accuracy_primary=test_acc1,
                 test_accuracy_auxiliary=0,
