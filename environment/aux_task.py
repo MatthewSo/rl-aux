@@ -13,7 +13,7 @@ from utils.vars import softmax
 
 
 class AuxTaskEnv(gym.Env):
-    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func,batch_size=64,pri_dim=20,aux_dim=100,verbose=False,aux_weight = 1):
+    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func,batch_size=64,pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1):
         super(AuxTaskEnv, self).__init__()
         self.primary_dim=pri_dim
         self.aux_dim=aux_dim
@@ -149,7 +149,7 @@ class AuxTaskEnv(gym.Env):
         return obs, {}
 
 
-    def step(self, action):
+    def step(self, action, give_reward=True):
         reward = 0
         info = {}
         self.count += 1
@@ -176,25 +176,28 @@ class AuxTaskEnv(gym.Env):
             loss_aux = torch.mean(self.model.model_fit(softmax(aux_output), aux_target,pri=False, num_output=self.aux_dim, device=self.device))
 
             info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
+            if self.verbose:
+                print("loss_main",loss_class.item())
 
             #loss = loss_class + self.aux_weight * loss_aux
             loss = loss_class
             loss.backward()
             self.optimizer.step()
 
-            with torch.no_grad():
-                reward_batch, reward_labels = next(self.reward_sampler)
-                reward_batch, reward_labels = reward_batch.to(self.device),reward_labels.to(self.device)
+            if give_reward:
+                with torch.no_grad():
+                    reward_batch, reward_labels = next(self.reward_sampler)
+                    reward_batch, reward_labels = reward_batch.to(self.device),reward_labels.to(self.device)
 
-                class_output, aux_output = self.model(reward_batch)
-                loss_class_new = self.criterion(class_output, reward_labels)
-                if self.verbose:
-                    print("loss",loss_class_new.item())
-                reward =  - loss_class_new.item()
-                entropy=0.2*torch.mean(self.model.model_entropy(aux_target))
-                reward -= entropy
-                self.return_ +=reward
-                self.num_batches += 1
+                    class_output, aux_output = self.model(reward_batch)
+                    loss_class_new = self.criterion(class_output, reward_labels)
+                    if self.verbose:
+                        print("loss",loss_class_new.item())
+                    reward =  - loss_class_new.item()
+                    entropy=0.2*torch.mean(self.model.model_entropy(aux_target))
+                    reward -= entropy
+                    self.return_ +=reward
+                    self.num_batches += 1
 
         obs, done = self.get_obs()
         return obs, reward, done, False, info
