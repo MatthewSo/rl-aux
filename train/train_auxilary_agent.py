@@ -22,9 +22,9 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
         primary_model.eval()
 
         with torch.no_grad():
-            test_dataset = iter(test_loader)
+            test_loader_iterator = iter(test_loader)
             for i in range(num_test_batches):
-                test_data, test_label =  next(test_dataset)
+                test_data, test_label =  next(test_loader_iterator)
                 test_label = test_label.type(torch.LongTensor)
                 test_data, test_label = test_data.to(device), test_label.to(device)
 

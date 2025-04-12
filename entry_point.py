@@ -37,12 +37,12 @@ course_cifar_train_set = CoarseLabelCIFAR100(cifar100_train_set)
 course_cifar_test_set = CoarseLabelCIFAR100(cifar100_test_set)
 
 cifar100_train_loader = torch.utils.data.DataLoader(
-    dataset=cifar100_train_set,
+    dataset=course_cifar_train_set,
     batch_size=BATCH_SIZE,
     shuffle=True)
 
 cifar100_test_loader = torch.utils.data.DataLoader(
-    dataset=cifar100_test_set,
+    dataset=course_cifar_test_set,
     batch_size=BATCH_SIZE,
     shuffle=True)
 
