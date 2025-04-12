@@ -157,6 +157,8 @@ class AuxTaskEnv(gym.Env):
         self.current_batch_aux_labels.append(action)
 
         if len(self.current_batch_aux_labels) >= self.batch_size:
+            self.num_batches += 1
+
             self.current_batch_aux_labels = [
                 torch.from_numpy(arr) if isinstance(arr, np.ndarray) else arr
                 for arr in self.current_batch_aux_labels
@@ -177,7 +179,9 @@ class AuxTaskEnv(gym.Env):
 
             info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
             if self.verbose:
-                print("loss_main",loss_class.item())
+                if self.num_batches % 50 == 0:
+                    print("num_batches",self.num_batches)
+                    print("loss",loss_class.item())
 
             #loss = loss_class + self.aux_weight * loss_aux
             loss = loss_class
@@ -197,7 +201,6 @@ class AuxTaskEnv(gym.Env):
                     entropy=0.2*torch.mean(self.model.model_entropy(aux_target))
                     reward -= entropy
                     self.return_ +=reward
-                    self.num_batches += 1
 
         obs, done = self.get_obs()
         return obs, reward, done, False, info
