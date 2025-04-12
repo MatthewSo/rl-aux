@@ -19,7 +19,12 @@ SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 1.0
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+#select 5th gpu
+device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
+
+print("Using device:", device)
 
 # ---------
 
