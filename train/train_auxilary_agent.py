@@ -31,7 +31,7 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
                 test_primary_pred, test_aux_pred = primary_model(test_data)
                 test_primary_pred, test_aux_pred = softmax(test_primary_pred),softmax(test_aux_pred)
 
-                test_loss1  = primary_model.model_fit(test_primary_pred, test_label, pri=True,num_output=20)
+                test_loss1  = primary_model.model_fit(test_primary_pred, test_label, device=device, pri=True,num_output=20)
 
                 test_predict_label1 = test_primary_pred.data.max(1)[1]
 
