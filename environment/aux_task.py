@@ -95,6 +95,8 @@ class AuxTaskEnv(gym.Env):
 
     def get_obs(self):
         done = False
+        if len(self.current_batch) < self.batch_size:
+            return None, done
         if self.current_batch_index >= self.batch_size:
             self.current_batch_index = 0
             self.current_batch_aux_labels = []
