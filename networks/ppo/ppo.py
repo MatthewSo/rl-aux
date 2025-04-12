@@ -52,7 +52,7 @@ def get_ppo_agent( env, feature_dim, auxiliary_dim, device, batch_size, learning
         "net_arch":[],
     }
 
-    model = PPO("MultiInputPolicy", env, verbose=0, policy_kwargs=policy_kwargs,batch_size=batch_size, learning_rate=learning_rate,ent_coef=ent_coef,n_steps=n_steps,n_epochs=n_epochs)
+    model = PPO("MultiInputPolicy", env, verbose=0, policy_kwargs=policy_kwargs,batch_size=batch_size, learning_rate=learning_rate,ent_coef=ent_coef,n_steps=n_steps,n_epochs=n_epochs, device=device)
     action_net = ActionNet(feature_dim, auxiliary_dim)
     action_net = action_net.to(device)
     model.policy.action_net = action_net
