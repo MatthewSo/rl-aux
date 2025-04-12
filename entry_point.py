@@ -17,7 +17,7 @@ PRIMARY_LEARNING_RATE = 0.01
 PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
-AUX_WEIGHT = 1.0
+AUX_WEIGHT = 0
 
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -74,7 +74,7 @@ auxilary_task_agent = get_ppo_agent(env=env,
                                     ent_coef=0.01,
                                     n_steps=79,
                                     n_epochs=10,
-                                    batch_size=10)
+                                    batch_size=BATCH_SIZE)
 
 print("Done Initializing PPO Agent")
 

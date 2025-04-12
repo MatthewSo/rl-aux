@@ -13,8 +13,10 @@ from utils.vars import softmax
 
 
 class AuxTaskEnv(gym.Env):
-    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func,batch_size=64,aux_dim=50,verbose=False,aux_weight = 1):
+    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func,batch_size=64,pri_dim=20,aux_dim=100,verbose=False,aux_weight = 1):
         super(AuxTaskEnv, self).__init__()
+        self.primary_dim=pri_dim
+        self.aux_dim=aux_dim
         self.batch_size=batch_size
         self.train_dataset=train_dataset
         self.cannonical_model=copy.deepcopy(model)
@@ -61,6 +63,7 @@ class AuxTaskEnv(gym.Env):
 
         # step counter and return counter
         self.count=0
+        self.num_batches = 0
         self.return_ = 0
 
     def randomize_seed(self):
@@ -111,7 +114,6 @@ class AuxTaskEnv(gym.Env):
                 print("EPISODE FINISHED, steps: ",self.count)
 
         image =  self.current_batch.cpu()[self.current_batch_index]
-        label = self.current_labels.cpu()[self.current_batch_index]
 
         image = image.numpy().astype(np.float32)
 
@@ -123,6 +125,7 @@ class AuxTaskEnv(gym.Env):
         # reset counters
         self.return_ = 0
         self.count = 0
+        self.num_batches = 0
 
         # Initialize a new main task model from scratch at the start of each episode
         # restore state to cannonical model and optimzizer
@@ -149,6 +152,7 @@ class AuxTaskEnv(gym.Env):
     def step(self, action):
         reward = 0
         info = {}
+        self.count += 1
 
         self.current_batch_aux_labels.append(action)
 
@@ -165,7 +169,7 @@ class AuxTaskEnv(gym.Env):
             self.optimizer.zero_grad()
             primary_output, aux_output = self.model(inputs)
 
-            mask=create_mask_from_labels(labels).to(self.device)
+            mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
             aux_target=mask_softmax(torch.tensor(batch_action).to(self.device),mask,dim=-1)
 
             loss_class = torch.mean(self.model.model_fit(softmax(primary_output), labels, pri=True,num_output=20, device=self.device))
@@ -173,7 +177,8 @@ class AuxTaskEnv(gym.Env):
 
             info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
 
-            loss = loss_class + self.aux_weight * loss_aux
+            #loss = loss_class + self.aux_weight * loss_aux
+            loss = loss_class
             loss.backward()
             self.optimizer.step()
 
@@ -189,6 +194,7 @@ class AuxTaskEnv(gym.Env):
                 entropy=0.2*torch.mean(self.model.model_entropy(aux_target))
                 reward -= entropy
                 self.return_ +=reward
+                self.num_batches += 1
 
         obs, done = self.get_obs()
         return obs, reward, done, False, info
