@@ -172,8 +172,8 @@ class AuxTaskEnv(gym.Env):
             mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
             aux_target=mask_softmax(torch.tensor(batch_action).to(self.device),mask,dim=-1)
 
-            loss_class = torch.mean(self.model.model_fit(softmax(primary_output), labels, pri=True,num_output=20, device=self.device))
-            loss_aux = torch.mean(self.model.model_fit(softmax(aux_output), aux_target,pri=False, num_output=100, device=self.device))
+            loss_class = torch.mean(self.model.model_fit(softmax(primary_output), labels, pri=True,num_output=self.aux_dim, device=self.device))
+            loss_aux = torch.mean(self.model.model_fit(softmax(aux_output), aux_target,pri=False, num_output=self.primary_dim, device=self.device))
 
             info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
 

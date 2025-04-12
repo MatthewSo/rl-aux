@@ -1,3 +1,5 @@
+from tabnanny import verbose
+
 import torch
 from torch import nn
 
@@ -17,7 +19,7 @@ PRIMARY_LEARNING_RATE = 0.01
 PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
-AUX_WEIGHT = 0
+AUX_WEIGHT = 0.5
 
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -62,8 +64,10 @@ env = AuxTaskEnv(
     optimizer_func=optimizer_callback,
     scheduler_func=scheduler_callback,
     batch_size=BATCH_SIZE,
+    pri_dim=PRIMARY_DIMENSION,
     aux_dim=AUX_DIMENSION,
-    aux_weight=AUX_WEIGHT
+    aux_weight=AUX_WEIGHT,
+    verbose=True,
 )
 
 auxilary_task_agent = get_ppo_agent(env=env,
@@ -74,7 +78,8 @@ auxilary_task_agent = get_ppo_agent(env=env,
                                     ent_coef=0.01,
                                     n_steps=79,
                                     n_epochs=10,
-                                    batch_size=BATCH_SIZE)
+                                    batch_size=BATCH_SIZE,
+                                    )
 
 print("Done Initializing PPO Agent")
 
