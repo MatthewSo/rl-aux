@@ -25,6 +25,8 @@ AUX_WEIGHT = 1.0
 print("Torch CUDA available:", torch.cuda.is_available())
 print("Torch CUDA device count:", torch.cuda.device_count())
 device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
+if torch.cuda.is_available():
+    torch.set_default_device(device)
 print("Using device:", device)
 
 # ---------
