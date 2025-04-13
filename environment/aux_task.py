@@ -1,3 +1,5 @@
+import os
+
 import gymnasium as gym
 import torch
 import numpy as np
@@ -13,7 +15,7 @@ from utils.vars import softmax
 
 
 class AuxTaskEnv(gym.Env):
-    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func,batch_size=64,pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1):
+    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func,batch_size=64,pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1, save_path='./' ):
         super(AuxTaskEnv, self).__init__()
         self.primary_dim=pri_dim
         self.aux_dim=aux_dim
@@ -23,6 +25,7 @@ class AuxTaskEnv(gym.Env):
         self.criterion = criterion
         self.verbose=verbose
         self.aux_weight=aux_weight
+        self.save_path=save_path
 
         self.optimizer_func=optimizer_func
         self.scheduler_func=scheduler_func
@@ -79,6 +82,22 @@ class AuxTaskEnv(gym.Env):
     def get_stats(self):
         print("return:",self.return_)
         print("len",self.count)
+
+    def save(self, agent):
+        # make path if needed
+        if not os.path.exists(self.save_path):
+            os.makedirs(self.save_path)
+
+        # Save the model and optimizer state
+        torch.save(self.model.state_dict(), self.save_path + "/model.pth")
+        torch.save(self.optimizer.state_dict(), self.save_path + "/optimizer.pth")
+        torch.save(self.scheduler.state_dict(), self.save_path + "/scheduler.pth")
+
+        # Save the cannonical model
+        torch.save(self.cannonical_model.state_dict(), self.save_path + "/cannonical_model.pth")
+
+        # Save the agent stable baselines 3
+        agent.save(self.save_path + "/agent")
 
     def update(self):
         self.scheduler.step()
@@ -183,8 +202,7 @@ class AuxTaskEnv(gym.Env):
                     print("num_batches",self.num_batches)
                     print("loss",loss_class.item())
 
-            #loss = loss_class + self.aux_weight * loss_aux
-            loss = loss_class
+            loss = loss_class + self.aux_weight * loss_aux
             loss.backward()
             self.optimizer.step()
 

@@ -20,6 +20,7 @@ PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0.5
+SAVE_PATH = './ppo'
 
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -67,6 +68,7 @@ env = AuxTaskEnv(
     pri_dim=PRIMARY_DIMENSION,
     aux_dim=AUX_DIMENSION,
     aux_weight=AUX_WEIGHT,
+    save_path=SAVE_PATH,
     verbose=True,
 )
 
@@ -92,4 +94,5 @@ train_auxilary_agent(
     test_loader=cifar100_test_loader,
     batch_size=BATCH_SIZE,
     total_epochs=TOTAL_EPOCH,
+    save_path=SAVE_PATH,
 )

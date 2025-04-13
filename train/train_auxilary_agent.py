@@ -1,11 +1,9 @@
-import numpy as np
 import torch
-
+import pickle
 from train.model.performance import EpochPerformance
 from utils.vars import softmax
 
-
-def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs):
+def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs, save_path, model_train_ratio=4):
     epoch_performances = []
     epoch_performance = None
     num_test_batches = len(test_loader)
@@ -13,10 +11,15 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
     for index in range(total_epochs):
         primary_model.train()
         print("Starting Epoch: ", index)
-        #env.train_label_network_with_rl(aux_task_model)
+        env.train_label_network_with_rl(aux_task_model)
+
         print("Finished Training Auxiliary Task Model")
-        env.train_main_network(aux_task_model)
-        print("Finished Training Main Network")
+        for i in range(model_train_ratio):
+            env.train_main_network(aux_task_model)
+            print(f"Finished Training Main Task Model {i} of {model_train_ratio}")
+
+        # Save the model
+        env.save(aux_task_model)
 
         primary_model=env.cannonical_model
         primary_model.eval()
@@ -58,3 +61,7 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
             epoch_performances.append(epoch_performance)
 
             print(epoch_performance)
+
+            # save epoch performances as pickle. has no .save
+            with open(save_path + '/epoch_performances.pkl', 'wb') as f:
+                pickle.dump(epoch_performances, f)
