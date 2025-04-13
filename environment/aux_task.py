@@ -1,4 +1,5 @@
 import os
+from tabnanny import verbose
 
 import gymnasium as gym
 import torch
@@ -99,12 +100,14 @@ class AuxTaskEnv(gym.Env):
         # Save the agent stable baselines 3
         agent.save(self.save_path + "/agent")
 
-    def update(self):
+    def \
+            update(self):
         self.scheduler.step()
         self.cannonical_model=copy.deepcopy(self.model)
         self.optimizer_reload_state=copy.deepcopy( self.optimizer.state_dict())
         self.scheduler_reload_state=copy.deepcopy( self.scheduler.state_dict())
         self.randomize_seed()
+
 
     def evaluate(self, test_loader):
         # Evaluate the network on train and test sets
@@ -141,6 +144,9 @@ class AuxTaskEnv(gym.Env):
         return {"image": image}, done
 
     def reset(self, seed=None):
+        if verbose:
+            print("Resetting environment")
+
         # reset counters
         self.return_ = 0
         self.count = 0
