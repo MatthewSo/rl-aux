@@ -28,6 +28,7 @@ SAVE_PATH = create_path_name(
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
+    dataset="CIFAR100-20",
 )
 
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

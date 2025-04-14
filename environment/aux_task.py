@@ -16,7 +16,7 @@ from utils.vars import softmax
 
 
 class AuxTaskEnv(gym.Env):
-    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func,batch_size=64,pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1, save_path='./' ):
+    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func, image_shape=(3,32,32), batch_size=64,pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1, save_path='./' ):
         super(AuxTaskEnv, self).__init__()
         self.primary_dim=pri_dim
         self.aux_dim=aux_dim
@@ -52,7 +52,7 @@ class AuxTaskEnv(gym.Env):
         self.reward_sampler = iter( DataLoader(train_dataset, batch_size=256, sampler=sampler))
 
         # Define action and observation space
-        image_obs = spaces.Box(low=0, high=1, shape=(3, 32, 32), dtype=np.float32)
+        image_obs = spaces.Box(low=0, high=1, shape=image_shape, dtype=np.float32)
 
         self.observation_space = spaces.Dict({
             "image": image_obs,

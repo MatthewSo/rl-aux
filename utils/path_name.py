@@ -1,2 +1,2 @@
-def create_path_name(agent_type, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions):
-    return f"./trained_models/{agent_type}_{primary_model_type}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}"
+def create_path_name(agent_type, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset):
+    return f"./trained_models/{agent_type}_{primary_model_type}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}_{dataset}"
