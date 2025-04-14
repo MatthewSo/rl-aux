@@ -84,8 +84,8 @@ class AuxTaskEnv(gym.Env):
         print("len",self.count)
 
     def save(self, agent, save_path=None):
-        if save_path is not None:
-            self.save_path = save_path
+        if save_path is None:
+            save_path = self.save_path
 
         # make path if needed
         if not os.path.exists(save_path):
