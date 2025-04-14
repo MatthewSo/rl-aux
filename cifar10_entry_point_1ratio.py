@@ -127,4 +127,5 @@ train_auxilary_agent(
     total_epochs=TOTAL_EPOCH,
     save_path=SAVE_PATH,
     model_train_ratio=TRAIN_RATIO,
+    primary_dimension=PRIMARY_DIMENSION,
 )

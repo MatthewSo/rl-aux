@@ -42,7 +42,7 @@ save_all_parameters(
     aux_weight=AUX_WEIGHT,
     train_ratio=TRAIN_RATIO,
     save_path=SAVE_PATH,
-    dataset="CIFAR100",
+    dataset="CIFAR100-20",
     model_name="VGG",
     agent_type="PPO",
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
