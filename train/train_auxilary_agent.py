@@ -3,7 +3,7 @@ import pickle
 from train.model.performance import EpochPerformance
 from utils.vars import softmax
 
-def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs, save_path, model_train_ratio=4):
+def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio=4):
     epoch_performances = []
     epoch_performance = None
     num_test_batches = len(test_loader)
@@ -38,7 +38,7 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
                 test_primary_pred, test_aux_pred = primary_model(test_data)
                 test_primary_pred, test_aux_pred = softmax(test_primary_pred),softmax(test_aux_pred)
 
-                test_loss1  = primary_model.model_fit(test_primary_pred, test_label, device=device, pri=True,num_output=20)
+                test_loss1  = primary_model.model_fit(test_primary_pred, test_label, device=device, pri=True,num_output=primary_dimension)
 
                 test_predict_label1 = test_primary_pred.data.max(1)[1]
 
