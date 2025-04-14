@@ -1,10 +1,10 @@
 from torch.utils.data import Dataset
-from torchvision.datasets import CIFAR10
+from torchvision.datasets import CIFAR10 as CIFAR10Original
 
 class CIFAR10(Dataset):
     def __init__(self, root, train=True, transform=None, download=False):
         super().__init__()
-        self.cifar10 = CIFAR10(
+        self.cifar10 = CIFAR10Original(
             root=root,
             train=train,
             transform=transform,
