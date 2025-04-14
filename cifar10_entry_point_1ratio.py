@@ -10,7 +10,7 @@ from environment.aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
-from utils.path_name import create_path_name
+from utils.path_name import create_path_name, save_all_parameters
 
 BATCH_SIZE = 64
 AUX_DIMENSION = 50
@@ -23,6 +23,8 @@ SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0.5
 TRAIN_RATIO = 1
+# Save locations
+
 SAVE_PATH = create_path_name(
     agent_type="PPO",
     primary_model_type="VGG",
@@ -31,6 +33,28 @@ SAVE_PATH = create_path_name(
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
     dataset="CIFAR10",
 )
+
+save_all_parameters(
+    batch_size=BATCH_SIZE,
+    aux_dimensions=AUX_DIMENSION,
+    primary_dimensions=PRIMARY_DIMENSION,
+    total_epoch=TOTAL_EPOCH,
+    primary_learning_rate=PRIMARY_LEARNING_RATE,
+    ppo_learning_rate=PPO_LEARNING_RATE,
+    scheduler_step_size=SCHEDULER_STEP_SIZE,
+    scheduler_gamma=SCHEDULER_GAMMA,
+    aux_weight=AUX_WEIGHT,
+    train_ratio=TRAIN_RATIO,
+    save_path=SAVE_PATH,
+    dataset="CIFAR10",
+    model_name="VGG",
+    agent_type="PPO",
+    observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
+    aux_task_type="AuxTask",
+    primary_task_type="VGG",
+)
+
+
 
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
