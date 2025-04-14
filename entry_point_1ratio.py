@@ -9,6 +9,7 @@ from environment.aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
+from utils.path_name import create_path_name
 
 BATCH_SIZE = 64
 AUX_DIMENSION = 100
@@ -20,7 +21,14 @@ PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0.5
-SAVE_PATH = './ppo'
+TRAIN_RATIO = 1
+SAVE_PATH = create_path_name(
+    agent_type="PPO",
+    primary_model_type="VGG",
+    train_ratio=TRAIN_RATIO,
+    aux_weight=AUX_WEIGHT,
+    observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
+)
 
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -95,4 +103,5 @@ train_auxilary_agent(
     batch_size=BATCH_SIZE,
     total_epochs=TOTAL_EPOCH,
     save_path=SAVE_PATH,
+    model_train_ratio=TRAIN_RATIO,
 )

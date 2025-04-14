@@ -50,7 +50,6 @@ class AuxTaskEnv(gym.Env):
         # create endless sampler for reward sampling
         sampler = RandomSampler(train_dataset, replacement=True,num_samples=sys.maxsize )
         self.reward_sampler = iter( DataLoader(train_dataset, batch_size=256, sampler=sampler))
-        self.reward_mode = True # toggle reward calculation when not training
 
         # Define action and observation space
         image_obs = spaces.Box(low=0, high=1, shape=(3, 32, 32), dtype=np.float32)
@@ -84,21 +83,24 @@ class AuxTaskEnv(gym.Env):
         print("return:",self.return_)
         print("len",self.count)
 
-    def save(self, agent):
+    def save(self, agent, save_path=None):
+        if save_path is not None:
+            self.save_path = save_path
+
         # make path if needed
-        if not os.path.exists(self.save_path):
-            os.makedirs(self.save_path)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
 
         # Save the model and optimizer state
-        torch.save(self.model.state_dict(), self.save_path + "/model.pth")
-        torch.save(self.optimizer.state_dict(), self.save_path + "/optimizer.pth")
-        torch.save(self.scheduler.state_dict(), self.save_path + "/scheduler.pth")
+        torch.save(self.model.state_dict(), save_path + "/model.pth")
+        torch.save(self.optimizer.state_dict(), save_path + "/optimizer.pth")
+        torch.save(self.scheduler.state_dict(), save_path + "/scheduler.pth")
 
         # Save the cannonical model
-        torch.save(self.cannonical_model.state_dict(), self.save_path + "/cannonical_model.pth")
+        torch.save(self.cannonical_model.state_dict(), save_path + "/cannonical_model.pth")
 
         # Save the agent stable baselines 3
-        agent.save(self.save_path + "/agent")
+        agent.save(save_path + "/agent")
 
     def \
             update(self):
@@ -144,7 +146,7 @@ class AuxTaskEnv(gym.Env):
         return {"image": image}, done
 
     def reset(self, seed=None):
-        if verbose:
+        if self.verbose:
             print("Resetting environment")
 
         # reset counters

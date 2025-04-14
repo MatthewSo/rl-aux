@@ -8,6 +8,8 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
     epoch_performance = None
     num_test_batches = len(test_loader)
 
+    best_training_performance = 0
+
     for index in range(total_epochs):
         primary_model.train()
         print("Starting Epoch: ", index)
@@ -46,6 +48,11 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
 
             test_loss1 = test_epoch_loss / num_test_batches
             test_acc1 = test_epoch_acc / num_test_batches
+
+            if test_acc1 > best_training_performance:
+                best_training_performance = test_acc1
+                print(f"Best training performance so far: {best_training_performance}")
+                env.save(aux_task_model, save_path + '/best_model')
 
             epoch_performance = EpochPerformance(
                 epoch=index,
