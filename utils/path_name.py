@@ -1,4 +1,5 @@
 import json
+import os
 
 
 def create_path_name(agent_type, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset):
@@ -24,6 +25,10 @@ def save_all_parameters(
         aux_task_type,
         primary_task_type):
     # save as loadable json
+    # create path if it doesnt exist
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
     parameters = {
         "batch_size": batch_size,
         "aux_dimensions": aux_dimensions,
