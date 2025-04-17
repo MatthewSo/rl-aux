@@ -209,6 +209,7 @@ class AuxTaskEnv(gym.Env):
                 if self.num_batches % 50 == 0:
                     print("num_batches",self.num_batches)
                     print("loss",loss_class.item())
+                    print("loss_aux",loss_aux.item())
 
             loss = loss_class + self.aux_weight * loss_aux
             loss.backward()
@@ -222,7 +223,9 @@ class AuxTaskEnv(gym.Env):
                     class_output, aux_output = self.model(reward_batch)
                     loss_class_new = self.criterion(class_output, reward_labels)
                     if self.verbose:
-                        print("loss",loss_class_new.item())
+                        if self.num_batches % 50 == 0:
+                            print("num_batches",self.num_batches)
+                            print("loss",loss_class_new.item())
                     reward =  - loss_class_new.item()
                     entropy=0.2*torch.mean(self.model.model_entropy(aux_target))
                     reward -= entropy
@@ -234,8 +237,9 @@ class AuxTaskEnv(gym.Env):
     def render(self, mode='human'):
         pass  # Not needed for now
 
-    def train_label_network_with_rl(self, model):
+    def train_label_network_with_rl(self, model, ratio=1):
         episode_length = len(self.train_loader) * self.batch_size # Total steps in an episode
+        episode_length = int(episode_length * ratio)
         model.learn(total_timesteps=episode_length)
 
     def train_main_network(self, model):

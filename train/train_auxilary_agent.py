@@ -13,12 +13,11 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
     for index in range(total_epochs):
         primary_model.train()
         print("Starting Epoch: ", index)
-        env.train_label_network_with_rl(aux_task_model)
+        env.train_label_network_with_rl(aux_task_model, ratio=model_train_ratio)
 
         print("Finished Training Auxiliary Task Model")
-        for i in range(model_train_ratio):
-            env.train_main_network(aux_task_model)
-            print(f"Finished Training Main Task Model {i} of {model_train_ratio}")
+        env.train_main_network(aux_task_model)
+        print("Finished Training Primary Task Model")
 
         # Save the model
         env.save(aux_task_model)
