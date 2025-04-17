@@ -3,7 +3,7 @@ import pickle
 from train.model.performance import EpochPerformance
 from utils.vars import softmax
 
-def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio=4):
+def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio=4, skip_rl=False):
     epoch_performances = []
     epoch_performance = None
     num_test_batches = len(test_loader)
@@ -13,7 +13,8 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
     for index in range(total_epochs):
         primary_model.train()
         print("Starting Epoch: ", index)
-        env.train_label_network_with_rl(aux_task_model, ratio=model_train_ratio)
+        if not skip_rl:
+            env.train_label_network_with_rl(aux_task_model, ratio=model_train_ratio)
 
         print("Finished Training Auxiliary Task Model")
         env.train_main_network(aux_task_model)
