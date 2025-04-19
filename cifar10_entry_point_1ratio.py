@@ -61,7 +61,7 @@ save_all_parameters(
 #select 5th gpu
 print("Torch CUDA available:", torch.cuda.is_available())
 print("Torch CUDA device count:", torch.cuda.device_count())
-device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
 print("Using device:", device)
 
