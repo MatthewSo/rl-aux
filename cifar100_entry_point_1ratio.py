@@ -1,3 +1,4 @@
+import subprocess
 from tabnanny import verbose
 
 import torch
@@ -22,6 +23,9 @@ SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 2
 TRAIN_RATIO = 1
+
+git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+
 SAVE_PATH = create_path_name(
     agent_type="PPO",
     primary_model_type="VGG",
@@ -48,6 +52,7 @@ save_all_parameters(
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
     aux_task_type="AuxTask",
     primary_task_type="VGG",
+    git_commit_hash=git_hash,
 )
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

@@ -1,3 +1,4 @@
+import subprocess
 from tabnanny import verbose
 
 import torch
@@ -24,6 +25,7 @@ SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0
 TRAIN_RATIO = 1
 # Save locations
+git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
     agent_type="NONE_SINGLETASK",
@@ -52,6 +54,7 @@ save_all_parameters(
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
     aux_task_type="NONE_SINGLETASK",
     primary_task_type="VGG",
+    git_commit_hash=git_hash,
 )
 
 

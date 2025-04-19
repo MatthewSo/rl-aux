@@ -23,7 +23,9 @@ def save_all_parameters(
         agent_type,
         observation_feature_dimensions,
         aux_task_type,
-        primary_task_type):
+        primary_task_type,
+        git_commit_hash,
+):
     # save as loadable json
     # create path if it doesnt exist
     if not os.path.exists(save_path):
@@ -46,7 +48,8 @@ def save_all_parameters(
         "agent_type": agent_type,
         "observation_feature_dimensions": observation_feature_dimensions,
         "aux_task_type": aux_task_type,
-        "primary_task_type": primary_task_type
+        "primary_task_type": primary_task_type,
+        "git_commit_hash": git_commit_hash,
     }
     # Save the parameters to a JSON file
     with open(f"{save_path}/parameters.json", "w") as f:

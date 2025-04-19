@@ -2,7 +2,7 @@ from tabnanny import verbose
 
 import torch
 from torch import nn
-
+import subprocess
 from datasets.cifar10 import CIFAR10
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import trans_train, trans_test
@@ -24,6 +24,9 @@ SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 2
 TRAIN_RATIO = 0.5
 # Save locations
+
+#latest git commit hash
+git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
     agent_type="PPO",
@@ -52,6 +55,7 @@ save_all_parameters(
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
     aux_task_type="AuxTask",
     primary_task_type="VGG",
+    git_commit_hash=git_hash,
 )
 
 
