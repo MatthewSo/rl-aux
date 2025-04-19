@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from create_dataset import *
+from legacy.create_dataset import *
 
 import numpy as np
 
