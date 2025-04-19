@@ -87,6 +87,7 @@ class LabelGenerator(nn.Module):
 
         # build a binary mask by psi, we add epsilon=1e-8 to avoid nans
         index = torch.zeros([len(self.class_nb), np.sum(self.class_nb)]) + 1e-8
+        index = index.to(device)
         for i in range(len(self.class_nb)):
             index[i, int(np.sum(self.class_nb[:i])):np.sum(self.class_nb[:i+1])] = 1
         mask = index[y].to(device)
