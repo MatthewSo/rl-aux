@@ -275,6 +275,7 @@ trans_test = transforms.Compose([
 cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=False)
 cifar100_test_set = CIFAR100(root='dataset', train=False, transform=trans_test, download=False)
 
+
 batch_size = 100
 kwargs = {'num_workers': 1, 'pin_memory': True}
 cifar100_train_loader = torch.utils.data.DataLoader(

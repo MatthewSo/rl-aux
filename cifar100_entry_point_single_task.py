@@ -4,6 +4,7 @@ from tabnanny import verbose
 import torch
 from torch import nn
 
+from cifar100_entry_point_1ratio import optimizer_callback
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import trans_train, trans_test
 from environment.aux_task import AuxTaskEnv
@@ -12,7 +13,7 @@ from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.path_name import create_path_name, save_all_parameters
 
-BATCH_SIZE = 64
+BATCH_SIZE = 100
 AUX_DIMENSION = 100
 PRIMARY_DIMENSION = 20
 OBSERVATION_FEATURE_DIMENSION = 256
@@ -86,7 +87,10 @@ primary_model = VGG16(
     auxiliary_task_output=AUX_DIMENSION
 ).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer_callback = lambda x: torch.optim.Adam(x.parameters(), lr=PRIMARY_LEARNING_RATE)
+#optimizer_callback = lambda x: torch.optim.Adam(x.parameters(), lr=PRIMARY_LEARNING_RATE)
+#scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
+
+optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNING_RATE)
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 
 env = AuxTaskEnv(

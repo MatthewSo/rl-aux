@@ -41,7 +41,8 @@ class VGG16(nn.Module):
         self.classifier1 = nn.Sequential(
             nn.Linear(filter[-1], filter[-1]),
             nn.ReLU(inplace=True),
-            nn.Linear(filter[-1], primary_task_output)
+            nn.Linear(filter[-1], primary_task_output),
+            nn.Softmax(dim=1),
         )
 
         # auxiliary task prediction
@@ -49,6 +50,7 @@ class VGG16(nn.Module):
             nn.Linear(filter[-1], filter[-1]),
             nn.ReLU(inplace=True),
             nn.Linear(filter[-1], auxiliary_task_output),
+            nn.Softmax(dim=1),
         )
 
         # apply weight initialisation
