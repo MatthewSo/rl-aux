@@ -16,7 +16,7 @@ from utils.vars import softmax
 
 
 class AuxTaskEnv(gym.Env):
-    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func, image_shape=(3,32,32), batch_size=64,pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1, save_path='./' ):
+    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func, batch_size, image_shape=(3,32,32),pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1, save_path='./' ):
         super(AuxTaskEnv, self).__init__()
         self.primary_dim=pri_dim
         self.aux_dim=aux_dim
@@ -212,6 +212,8 @@ class AuxTaskEnv(gym.Env):
                     print("loss_aux",loss_aux.item())
 
             loss = loss_class + self.aux_weight * loss_aux
+            if self.aux_weight == 0:
+                loss = loss_class
             loss.backward()
             self.optimizer.step()
 
