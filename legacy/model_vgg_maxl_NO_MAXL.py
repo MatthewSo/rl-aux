@@ -424,6 +424,7 @@ for index in range(total_epoch):
             test_pred1, test_pred2 = VGG16_model(test_data)
 
             print(test_label.shape)
+            print(test_label[:, 2].shape)
 
             test_loss1 = VGG16_model.model_fit(test_pred1, test_label[:, 2], pri=True, num_output=20)
 
