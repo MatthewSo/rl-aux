@@ -425,6 +425,8 @@ for index in range(total_epoch):
 
             print(test_label.shape)
             print(test_label[:, 2].shape)
+            # print max value in test_label[:, 2]
+            print(test_label[:, 2].max())
 
             test_loss1 = VGG16_model.model_fit(test_pred1, test_label[:, 2], pri=True, num_output=20)
 
