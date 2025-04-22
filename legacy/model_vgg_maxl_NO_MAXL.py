@@ -423,6 +423,8 @@ for index in range(total_epoch):
             test_data, test_label = test_data.to(device), test_label.to(device)
             test_pred1, test_pred2 = VGG16_model(test_data)
 
+            print(test_label.shape)
+
             test_loss1 = VGG16_model.model_fit(test_pred1, test_label[:, 2], pri=True, num_output=20)
 
             test_predict_label1 = test_pred1.data.max(1)[1]
