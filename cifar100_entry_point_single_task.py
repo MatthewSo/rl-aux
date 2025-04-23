@@ -6,7 +6,7 @@ from torch import nn
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import trans_train, trans_test
 from environment.aux_task import AuxTaskEnv
-from networks.ppo.ppo import get_ppo_agent
+from networks.ppo.ppo import get_ppo_agent, get_fast_dummy_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.path_name import create_path_name, save_all_parameters
@@ -105,16 +105,10 @@ env = AuxTaskEnv(
     verbose=True,
 )
 
-auxilary_task_agent = get_ppo_agent(env=env,
-                                    feature_dim=OBSERVATION_FEATURE_DIMENSION,
-                                    auxiliary_dim=AUX_DIMENSION,
-                                    learning_rate=PPO_LEARNING_RATE,
-                                    device=device,
-                                    ent_coef=0.01,
-                                    n_steps=79,
-                                    n_epochs=10,
-                                    batch_size=BATCH_SIZE,
-                                    )
+auxilary_task_agent = get_fast_dummy_ppo_agent(
+    env,
+    device
+)
 
 print("Done Initializing PPO Agent")
 

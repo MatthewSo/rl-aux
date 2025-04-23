@@ -441,6 +441,8 @@ for index in range(total_epoch):
 
             avg_cost[index][7:] += cost[0:2] / test_batch
 
+    print(optimizer.state_dict())
+    print(scheduler.state_dict())
     scheduler.step()
     #gen_scheduler.step()
     print('EPOCH: {:04d} Iter {:04d} | TRAIN [LOSS|ACC.]: PRI {:.4f} {:.4f} COSSIM {:.4f} || '

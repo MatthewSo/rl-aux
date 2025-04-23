@@ -62,3 +62,43 @@ def get_ppo_agent( env, feature_dim, auxiliary_dim, device, batch_size, learning
     model.policy.value_net = value_net
 
     return model
+
+def get_fast_dummy_ppo_agent(
+        env,
+        device,
+        learning_rate=3e-4,
+        hidden_size=32,
+        n_steps=16,
+        batch_size=16,
+        n_epochs=1,
+):
+    class FlatExtractor(BaseFeaturesExtractor):
+        def __init__(self, observation_space: spaces.Space):
+            flat_dim = int(np.prod(observation_space.shape))
+            super().__init__(observation_space, features_dim=flat_dim)
+            self.flatten = nn.Flatten()
+
+        def forward(self, obs):
+            return self.flatten(obs)
+
+    policy_kwargs = dict(
+        features_extractor_class=FlatExtractor,
+        net_arch=[                       # one hidden layer each for actor/critic
+            dict(pi=[hidden_size], vf=[hidden_size])
+        ],
+    )
+
+    model = PPO(
+        policy="MlpPolicy",
+        env=env,
+        verbose=0,
+        device=device,
+        learning_rate=learning_rate,
+        policy_kwargs=policy_kwargs,
+        n_steps=n_steps,
+        batch_size=batch_size,
+        n_epochs=n_epochs,
+        gamma=0.99,
+        ent_coef=0.0,
+    )
+    return model

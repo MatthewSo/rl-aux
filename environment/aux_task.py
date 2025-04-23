@@ -105,6 +105,8 @@ class AuxTaskEnv(gym.Env):
     def \
             update(self):
         self.scheduler.step()
+        print(self.scheduler.state_dict())
+        print(self.optimizer.state_dict())
         self.cannonical_model=copy.deepcopy(self.model)
         self.optimizer_reload_state=copy.deepcopy( self.optimizer.state_dict())
         self.scheduler_reload_state=copy.deepcopy( self.scheduler.state_dict())
