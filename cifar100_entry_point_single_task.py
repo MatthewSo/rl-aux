@@ -1,10 +1,8 @@
 import subprocess
-from tabnanny import verbose
 
 import torch
 from torch import nn
 
-from cifar100_entry_point_1ratio import optimizer_callback
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import trans_train, trans_test
 from environment.aux_task import AuxTaskEnv
