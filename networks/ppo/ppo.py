@@ -63,6 +63,7 @@ def get_ppo_agent( env, feature_dim, auxiliary_dim, device, batch_size, learning
 
     return model
 
+
 def get_fast_dummy_ppo_agent(
         env,
         device,
@@ -72,33 +73,35 @@ def get_fast_dummy_ppo_agent(
         batch_size=16,
         n_epochs=1,
 ):
-    class FlatExtractor(BaseFeaturesExtractor):
-        def __init__(self, observation_space: spaces.Space):
-            flat_dim = int(np.prod(observation_space.shape))
+    class FastDictExtractor(BaseFeaturesExtractor):
+
+
+        def __init__(self, observation_space: spaces.Dict):
+            flat_dim = sum(int(np.prod(space.shape))
+                           for space in observation_space.spaces.values())
             super().__init__(observation_space, features_dim=flat_dim)
             self.flatten = nn.Flatten()
 
         def forward(self, obs):
-            return self.flatten(obs)
+            parts = [self.flatten(t) for t in obs.values()]
+            return torch.cat(parts, dim=1)
 
     policy_kwargs = dict(
-        features_extractor_class=FlatExtractor,
-        net_arch=[                       # one hidden layer each for actor/critic
-            dict(pi=[hidden_size], vf=[hidden_size])
-        ],
+        features_extractor_class=FastDictExtractor,
+        net_arch=[dict(pi=[hidden_size], vf=[hidden_size])],
     )
 
     model = PPO(
-        policy="MlpPolicy",
+        policy="MultiInputPolicy",
         env=env,
-        verbose=0,
         device=device,
         learning_rate=learning_rate,
-        policy_kwargs=policy_kwargs,
         n_steps=n_steps,
         batch_size=batch_size,
         n_epochs=n_epochs,
         gamma=0.99,
         ent_coef=0.0,
+        verbose=0,
+        policy_kwargs=policy_kwargs,
     )
     return model
