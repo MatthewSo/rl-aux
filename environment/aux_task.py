@@ -106,6 +106,8 @@ class AuxTaskEnv(gym.Env):
             update(self):
         self.scheduler.step()
         self.cannonical_model=copy.deepcopy(self.model)
+        print(self.optimizer.state_dict())
+        print(self.scheduler.state_dict())
         self.optimizer_reload_state=copy.deepcopy( self.optimizer.state_dict())
         self.scheduler_reload_state=copy.deepcopy( self.scheduler.state_dict())
         self.randomize_seed()
@@ -251,5 +253,6 @@ class AuxTaskEnv(gym.Env):
         while not done:
             action, _states = model.predict(obs, deterministic=True)
             obs, reward, done, trunc, _info = self.step(action, give_reward=False)
+            done = True # REMOVE
         self.update()
         self.reward_mode=True
