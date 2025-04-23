@@ -3,6 +3,7 @@ from stable_baselines3 import SAC
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 from torchvision import models
+import torch
 import torch.nn as nn
 import numpy as np
 from gymnasium import spaces
