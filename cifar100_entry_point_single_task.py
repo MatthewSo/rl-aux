@@ -28,7 +28,7 @@ TRAIN_RATIO = 1
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
-    agent_type="PPO",
+    agent_type="NONE_SINGLETASK",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
@@ -49,9 +49,9 @@ save_all_parameters(
     save_path=SAVE_PATH,
     dataset="CIFAR100-20",
     model_name="VGG",
-    agent_type="PPO",
+    agent_type="NONE_SINGLETASK",
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
-    aux_task_type="AuxTask",
+    aux_task_type="NON_SINGLETASK",
     primary_task_type="VGG",
     git_commit_hash=git_hash,
 )
