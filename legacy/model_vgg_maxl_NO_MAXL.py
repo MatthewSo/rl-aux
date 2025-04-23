@@ -11,91 +11,91 @@ import torch.nn.functional as F
 import torch.utils.data.sampler as sampler
 
 
-class LabelGenerator(nn.Module):
-    def __init__(self, psi):
-        super(LabelGenerator, self).__init__()
-        """
-            label-generation network:
-            takes the input and generates auxiliary labels with masked softmax for an auxiliary task.
-        """
-        filter = [64, 128, 256, 512, 512]
-        self.class_nb = psi
-
-        # define convolution block in VGG-16
-        self.block1 = self.conv_layer(3, filter[0], 1)
-        self.block2 = self.conv_layer(filter[0], filter[1], 2)
-        self.block3 = self.conv_layer(filter[1], filter[2], 3)
-        self.block4 = self.conv_layer(filter[2], filter[3], 4)
-        self.block5 = self.conv_layer(filter[3], filter[4], 5)
-
-        # define fc-layers in VGG-16 (output auxiliary classes \sum_i\psi[i])
-        self.classifier = nn.Sequential(
-            nn.Linear(filter[-1], filter[-1]),
-            nn.ReLU(inplace=True),
-            nn.Linear(filter[-1], int(np.sum(self.class_nb))),
-        )
-
-        # apply weight initialisation
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.xavier_normal_(m.weight)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.xavier_normal_(m.weight)
-                nn.init.constant_(m.bias, 0)
-
-    def conv_layer(self, in_channel, out_channel, index):
-        if index < 3:
-            conv_block = nn.Sequential(
-                nn.Conv2d(in_channels=in_channel, out_channels=out_channel, kernel_size=3, padding=1),
-                nn.BatchNorm2d(out_channel),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=out_channel, out_channels=out_channel, kernel_size=3, padding=1),
-                nn.BatchNorm2d(out_channel),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=2, stride=2),
-            )
-        else:
-            conv_block = nn.Sequential(
-                nn.Conv2d(in_channels=in_channel, out_channels=out_channel, kernel_size=3, padding=1),
-                nn.BatchNorm2d(out_channel),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=out_channel, out_channels=out_channel, kernel_size=3, padding=1),
-                nn.BatchNorm2d(out_channel),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=out_channel, out_channels=out_channel, kernel_size=3, padding=1),
-                nn.BatchNorm2d(out_channel),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=2, stride=2),
-            )
-        return conv_block
-
-    # define masked softmax
-    def mask_softmax(self, x, mask, dim=1):
-        logits = torch.exp(x) * mask / torch.sum(torch.exp(x) * mask, dim=dim, keepdim=True)
-        return logits
-
-    def forward(self, x, y):
-        g_block1 = self.block1(x)
-        g_block2 = self.block2(g_block1)
-        g_block3 = self.block3(g_block2)
-        g_block4 = self.block4(g_block3)
-        g_block5 = self.block5(g_block4)
-
-        # build a binary mask by psi, we add epsilon=1e-8 to avoid nans
-        index = torch.zeros([len(self.class_nb), np.sum(self.class_nb)]) + 1e-8
-        index = index.to(device)
-        for i in range(len(self.class_nb)):
-            index[i, int(np.sum(self.class_nb[:i])):np.sum(self.class_nb[:i+1])] = 1
-        mask = index[y].to(device)
-
-        predict = self.classifier(g_block5.view(g_block5.size(0), -1))
-        label_pred = self.mask_softmax(predict, mask, dim=1)
-
-        return label_pred
+# class LabelGenerator(nn.Module):
+#     def __init__(self, psi):
+#         super(LabelGenerator, self).__init__()
+#         """
+#             label-generation network:
+#             takes the input and generates auxiliary labels with masked softmax for an auxiliary task.
+#         """
+#         filter = [64, 128, 256, 512, 512]
+#         self.class_nb = psi
+#
+#         # define convolution block in VGG-16
+#         self.block1 = self.conv_layer(3, filter[0], 1)
+#         self.block2 = self.conv_layer(filter[0], filter[1], 2)
+#         self.block3 = self.conv_layer(filter[1], filter[2], 3)
+#         self.block4 = self.conv_layer(filter[2], filter[3], 4)
+#         self.block5 = self.conv_layer(filter[3], filter[4], 5)
+#
+#         # define fc-layers in VGG-16 (output auxiliary classes \sum_i\psi[i])
+#         self.classifier = nn.Sequential(
+#             nn.Linear(filter[-1], filter[-1]),
+#             nn.ReLU(inplace=True),
+#             nn.Linear(filter[-1], int(np.sum(self.class_nb))),
+#         )
+#
+#         # apply weight initialisation
+#         for m in self.modules():
+#             if isinstance(m, nn.Conv2d):
+#                 nn.init.xavier_normal_(m.weight)
+#                 nn.init.constant_(m.bias, 0)
+#             elif isinstance(m, nn.BatchNorm2d):
+#                 nn.init.constant_(m.weight, 1)
+#                 nn.init.constant_(m.bias, 0)
+#             elif isinstance(m, nn.Linear):
+#                 nn.init.xavier_normal_(m.weight)
+#                 nn.init.constant_(m.bias, 0)
+#
+#     def conv_layer(self, in_channel, out_channel, index):
+#         if index < 3:
+#             conv_block = nn.Sequential(
+#                 nn.Conv2d(in_channels=in_channel, out_channels=out_channel, kernel_size=3, padding=1),
+#                 nn.BatchNorm2d(out_channel),
+#                 nn.ReLU(inplace=True),
+#                 nn.Conv2d(in_channels=out_channel, out_channels=out_channel, kernel_size=3, padding=1),
+#                 nn.BatchNorm2d(out_channel),
+#                 nn.ReLU(inplace=True),
+#                 nn.MaxPool2d(kernel_size=2, stride=2),
+#             )
+#         else:
+#             conv_block = nn.Sequential(
+#                 nn.Conv2d(in_channels=in_channel, out_channels=out_channel, kernel_size=3, padding=1),
+#                 nn.BatchNorm2d(out_channel),
+#                 nn.ReLU(inplace=True),
+#                 nn.Conv2d(in_channels=out_channel, out_channels=out_channel, kernel_size=3, padding=1),
+#                 nn.BatchNorm2d(out_channel),
+#                 nn.ReLU(inplace=True),
+#                 nn.Conv2d(in_channels=out_channel, out_channels=out_channel, kernel_size=3, padding=1),
+#                 nn.BatchNorm2d(out_channel),
+#                 nn.ReLU(inplace=True),
+#                 nn.MaxPool2d(kernel_size=2, stride=2),
+#             )
+#         return conv_block
+#
+#     # define masked softmax
+#     def mask_softmax(self, x, mask, dim=1):
+#         logits = torch.exp(x) * mask / torch.sum(torch.exp(x) * mask, dim=dim, keepdim=True)
+#         return logits
+#
+#     def forward(self, x, y):
+#         g_block1 = self.block1(x)
+#         g_block2 = self.block2(g_block1)
+#         g_block3 = self.block3(g_block2)
+#         g_block4 = self.block4(g_block3)
+#         g_block5 = self.block5(g_block4)
+#
+#         # build a binary mask by psi, we add epsilon=1e-8 to avoid nans
+#         index = torch.zeros([len(self.class_nb), np.sum(self.class_nb)]) + 1e-8
+#         index = index.to(device)
+#         for i in range(len(self.class_nb)):
+#             index[i, int(np.sum(self.class_nb[:i])):np.sum(self.class_nb[:i+1])] = 1
+#         mask = index[y].to(device)
+#
+#         predict = self.classifier(g_block5.view(g_block5.size(0), -1))
+#         label_pred = self.mask_softmax(predict, mask, dim=1)
+#
+#         return label_pred
 
 
 class VGG16(nn.Module):
@@ -169,52 +169,53 @@ class VGG16(nn.Module):
         return conv_block
 
     # define forward conv-layer (will be used in second-derivative step)
-    def conv_layer_ff(self, input, weights, index):
-        if index < 3:
-            net = F.conv2d(input, weights['block{:d}.0.weight'.format(index)], weights['block{:d}.0.bias'.format(index)], padding=1)
-            net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
-                               weights['block{:d}.1.weight'.format(index)], weights['block{:d}.1.bias'.format(index)],
-                               training=True)
-            net = F.relu(net, inplace=True)
-            net = F.conv2d(net, weights['block{:d}.3.weight'.format(index)], weights['block{:d}.3.bias'.format(index)], padding=1)
-            net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
-                               weights['block{:d}.4.weight'.format(index)], weights['block{:d}.4.bias'.format(index)],
-                               training=True)
-            net = F.relu(net, inplace=True)
-            net = F.max_pool2d(net, kernel_size=2, stride=2, )
-        else:
-            net = F.conv2d(input, weights['block{:d}.0.weight'.format(index)], weights['block{:d}.0.bias'.format(index)], padding=1)
-            net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
-                               weights['block{:d}.1.weight'.format(index)], weights['block{:d}.1.bias'.format(index)],
-                               training=True)
-            net = F.relu(net, inplace=True)
-            net = F.conv2d(net, weights['block{:d}.3.weight'.format(index)], weights['block{:d}.3.bias'.format(index)], padding=1)
-            net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
-                               weights['block{:d}.4.weight'.format(index)], weights['block{:d}.4.bias'.format(index)],
-                               training=True)
-            net = F.relu(net, inplace=True)
-            net = F.conv2d(net, weights['block{:d}.6.weight'.format(index)], weights['block{:d}.6.bias'.format(index)], padding=1)
-            net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
-                               weights['block{:d}.7.weight'.format(index)], weights['block{:d}.7.bias'.format(index)],
-                               training=True)
-            net = F.relu(net, inplace=True)
-            net = F.max_pool2d(net, kernel_size=2, stride=2)
-        return net
-
-    # define forward fc-layer (will be used in second-derivative step)
-    def dense_layer_ff(self, input, weights, index):
-        net = F.linear(input, weights['classifier{:d}.0.weight'.format(index)], weights['classifier{:d}.0.bias'.format(index)])
-        net = F.relu(net, inplace=True)
-        net = F.linear(net, weights['classifier{:d}.2.weight'.format(index)], weights['classifier{:d}.2.bias'.format(index)])
-        net = F.softmax(net, dim=1)
-        return net
+    # def conv_layer_ff(self, input, weights, index):
+    #     if index < 3:
+    #         net = F.conv2d(input, weights['block{:d}.0.weight'.format(index)], weights['block{:d}.0.bias'.format(index)], padding=1)
+    #         net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
+    #                            weights['block{:d}.1.weight'.format(index)], weights['block{:d}.1.bias'.format(index)],
+    #                            training=True)
+    #         net = F.relu(net, inplace=True)
+    #         net = F.conv2d(net, weights['block{:d}.3.weight'.format(index)], weights['block{:d}.3.bias'.format(index)], padding=1)
+    #         net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
+    #                            weights['block{:d}.4.weight'.format(index)], weights['block{:d}.4.bias'.format(index)],
+    #                            training=True)
+    #         net = F.relu(net, inplace=True)
+    #         net = F.max_pool2d(net, kernel_size=2, stride=2, )
+    #     else:
+    #         net = F.conv2d(input, weights['block{:d}.0.weight'.format(index)], weights['block{:d}.0.bias'.format(index)], padding=1)
+    #         net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
+    #                            weights['block{:d}.1.weight'.format(index)], weights['block{:d}.1.bias'.format(index)],
+    #                            training=True)
+    #         net = F.relu(net, inplace=True)
+    #         net = F.conv2d(net, weights['block{:d}.3.weight'.format(index)], weights['block{:d}.3.bias'.format(index)], padding=1)
+    #         net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
+    #                            weights['block{:d}.4.weight'.format(index)], weights['block{:d}.4.bias'.format(index)],
+    #                            training=True)
+    #         net = F.relu(net, inplace=True)
+    #         net = F.conv2d(net, weights['block{:d}.6.weight'.format(index)], weights['block{:d}.6.bias'.format(index)], padding=1)
+    #         net = F.batch_norm(net, torch.zeros(net.data.size()[1]).to(device), torch.ones(net.data.size()[1]).to(device),
+    #                            weights['block{:d}.7.weight'.format(index)], weights['block{:d}.7.bias'.format(index)],
+    #                            training=True)
+    #         net = F.relu(net, inplace=True)
+    #         net = F.max_pool2d(net, kernel_size=2, stride=2)
+    #     return net
+    #
+    # # define forward fc-layer (will be used in second-derivative step)
+    # def dense_layer_ff(self, input, weights, index):
+    #     net = F.linear(input, weights['classifier{:d}.0.weight'.format(index)], weights['classifier{:d}.0.bias'.format(index)])
+    #     net = F.relu(net, inplace=True)
+    #     net = F.linear(net, weights['classifier{:d}.2.weight'.format(index)], weights['classifier{:d}.2.bias'.format(index)])
+    #     net = F.softmax(net, dim=1)
+    #     return net
 
     def forward(self, x, weights=None):
         """
             if no weights given, use the direct training strategy and update network paramters
             else retain the computational graph which will be used in second-derivative step
         """
-        if weights is None:
+        # if weights is None:
+        if True:
             g_block1 = self.block1(x)
             g_block2 = self.block2(g_block1)
             g_block3 = self.block3(g_block2)
@@ -224,16 +225,16 @@ class VGG16(nn.Module):
             t1_pred = self.classifier1(g_block5.view(g_block5.size(0), -1))
             t2_pred = self.classifier2(g_block5.view(g_block5.size(0), -1))
 
-        else:
-            g_block1 = self.conv_layer_ff(x, weights, 1)
-            g_block2 = self.conv_layer_ff(g_block1, weights, 2)
-            g_block3 = self.conv_layer_ff(g_block2, weights, 3)
-            g_block4 = self.conv_layer_ff(g_block3, weights, 4)
-            g_block5 = self.conv_layer_ff(g_block4, weights, 5)
-
-            t1_pred = self.dense_layer_ff(g_block5.view(g_block5.size(0), -1), weights, 1)
-            t2_pred = self.dense_layer_ff(g_block5.view(g_block5.size(0), -1), weights, 2)
-
+        # else:
+        #     g_block1 = self.conv_layer_ff(x, weights, 1)
+        #     g_block2 = self.conv_layer_ff(g_block1, weights, 2)
+        #     g_block3 = self.conv_layer_ff(g_block2, weights, 3)
+        #     g_block4 = self.conv_layer_ff(g_block3, weights, 4)
+        #     g_block5 = self.conv_layer_ff(g_block4, weights, 5)
+        #
+        #     t1_pred = self.dense_layer_ff(g_block5.view(g_block5.size(0), -1), weights, 1)
+        #     t2_pred = self.dense_layer_ff(g_block5.view(g_block5.size(0), -1), weights, 2)
+        #
         return t1_pred, t2_pred
 
     def model_fit(self, x_pred, x_output, pri=True, num_output=3):
