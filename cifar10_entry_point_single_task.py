@@ -1,14 +1,12 @@
 import subprocess
-from tabnanny import verbose
 
 import torch
 from torch import nn
 
 from datasets.cifar10 import CIFAR10
-from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import trans_train, trans_test
 from environment.aux_task import AuxTaskEnv
-from networks.ppo.ppo import get_ppo_agent
+from networks.ppo.ppo import get_fast_dummy_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.path_name import create_path_name, save_all_parameters
@@ -24,7 +22,7 @@ SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0
 TRAIN_RATIO = 1
-# Save locations
+
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
@@ -88,7 +86,7 @@ primary_model = VGG16(
     auxiliary_task_output=AUX_DIMENSION
 ).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer_callback = lambda x: torch.optim.Adam(x.parameters(), lr=PRIMARY_LEARNING_RATE)
+optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNING_RATE)
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 
 env = AuxTaskEnv(
@@ -106,16 +104,10 @@ env = AuxTaskEnv(
     verbose=True,
 )
 
-auxilary_task_agent = get_ppo_agent(env=env,
-                                    feature_dim=OBSERVATION_FEATURE_DIMENSION,
-                                    auxiliary_dim=AUX_DIMENSION,
-                                    learning_rate=PPO_LEARNING_RATE,
-                                    device=device,
-                                    ent_coef=0.01,
-                                    n_steps=79,
-                                    n_epochs=10,
-                                    batch_size=BATCH_SIZE,
-                                    )
+auxilary_task_agent = get_fast_dummy_ppo_agent(
+    env,
+    device
+)
 
 print("Done Initializing PPO Agent")
 
