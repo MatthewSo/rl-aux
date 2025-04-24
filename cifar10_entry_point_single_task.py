@@ -21,7 +21,7 @@ PRIMARY_LEARNING_RATE = 0.01
 PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
-AUX_WEIGHT = 1
+AUX_WEIGHT = 0
 TRAIN_RATIO = 1
 
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
