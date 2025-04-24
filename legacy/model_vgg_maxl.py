@@ -10,6 +10,20 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torch.utils.data.sampler as sampler
 
+from train.model.performance import EpochPerformance
+from utils.log import change_log_location, log_print
+from utils.path_name import create_path_name
+
+save_path = create_path_name(
+    agent_type="MAXL",
+    primary_model_type="VGG",
+    train_ratio=0,
+    aux_weight=0,
+    observation_feature_dimensions=0,
+    dataset="CIFAR100-20",
+)
+change_log_location(save_path)
+epoch_performances=[]
 
 class LabelGenerator(nn.Module):
     def __init__(self, psi):
@@ -434,6 +448,26 @@ for index in range(total_epoch):
 
     scheduler.step()
     gen_scheduler.step()
+
+    epoch_performance = EpochPerformance(
+        epoch=index,
+        train_loss_primary=avg_cost[index][0],
+        train_loss_auxiliary=0,
+        train_accuracy_primary=avg_cost[index][1],
+        train_accuracy_auxiliary=0,
+        test_loss_primary=avg_cost[index][7],
+        test_loss_auxiliary=0,
+        test_accuracy_primary=avg_cost[index][8],
+        test_accuracy_auxiliary=0,
+    )
+    epoch_performances.append(epoch_performance)
+
+    log_print(epoch_performance)
+
+    # save epoch performances as pickle. has no .save
+    with open(save_path + '/epoch_performances.pkl', 'wb') as f:
+        pickle.dump(epoch_performances, f)
+
     log_print('EPOCH: {:04d} Iter {:04d} | TRAIN [LOSS|ACC.]: PRI {:.4f} {:.4f} COSSIM {:.4f} || '
           'META [LOSS|ACC.]: PRE {:.4f} {:.4f} AFTER {:.4f} {:.4f} || TEST: {:.4f} {:.4f}'
           .format(index, k, avg_cost[index][0], avg_cost[index][1], avg_cost[index][2], avg_cost[index][3],
