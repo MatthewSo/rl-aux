@@ -6,6 +6,8 @@ import os
 import pickle
 import numpy as np
 
+from utils.log import log_print
+
 
 class CIFAR100(Dataset):
     """
