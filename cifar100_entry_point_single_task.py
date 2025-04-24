@@ -9,6 +9,7 @@ from environment.aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent, get_fast_dummy_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
+from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name, save_all_parameters
 
 BATCH_SIZE = 100
@@ -33,6 +34,9 @@ SAVE_PATH = create_path_name(
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
     dataset="CIFAR100-20",
 )
+
+change_log_location(SAVE_PATH)
+
 save_all_parameters(
     batch_size=BATCH_SIZE,
     aux_dimensions=AUX_DIMENSION,
@@ -55,11 +59,11 @@ save_all_parameters(
 )
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-print("Torch CUDA available:", torch.cuda.is_available())
-print("Torch CUDA device count:", torch.cuda.device_count())
+log_print("Torch CUDA available:", torch.cuda.is_available())
+log_print("Torch CUDA device count:", torch.cuda.device_count())
 device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 
-print("Using device:", device)
+log_print("Using device:", device)
 
 # ---------
 
@@ -110,7 +114,7 @@ auxilary_task_agent = get_fast_dummy_ppo_agent(
     device
 )
 
-print("Done Initializing PPO Agent")
+log_print("Done Initializing PPO Agent")
 
 # Train the PPO agent
 train_auxilary_agent(

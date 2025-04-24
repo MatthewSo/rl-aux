@@ -10,6 +10,7 @@ import copy
 import random
 import sys
 from utils.evaluate import evaluate
+from utils.log import log_print
 from utils.masked_softmax import create_mask_from_labels, mask_softmax
 from utils.randomization import SeededSubsetRandomSampler
 from utils.vars import softmax
@@ -58,7 +59,7 @@ class AuxTaskEnv(gym.Env):
             "image": image_obs,
         })
 
-        print(self.observation_space)
+        log_print(self.observation_space)
         self.action_space = spaces.Box(low=-1, high=1, shape=(aux_dim,), dtype=np.float32)
 
         # Model for the main classification task (reset this each episode)
@@ -80,8 +81,8 @@ class AuxTaskEnv(gym.Env):
         self.train_loader  = DataLoader(self.train_dataset, batch_size=self.batch_size, sampler=sampler)
 
     def get_stats(self):
-        print("return:",self.return_)
-        print("len",self.count)
+        log_print("return:",self.return_)
+        log_print("len",self.count)
 
     def save(self, agent, save_path=None):
         if save_path is None:
@@ -104,8 +105,8 @@ class AuxTaskEnv(gym.Env):
 
     def \
             update(self):
-        print(self.scheduler.state_dict())
-        print(self.optimizer.state_dict())
+        log_print(self.scheduler.state_dict())
+        log_print(self.optimizer.state_dict())
         self.scheduler.step()
         self.cannonical_model=copy.deepcopy(self.model)
         self.optimizer_reload_state=copy.deepcopy( self.optimizer.state_dict())
@@ -119,8 +120,8 @@ class AuxTaskEnv(gym.Env):
             train_accuracy = evaluate(self.model, self.train_loader,self.criterion, self.device)
             test_accuracy = evaluate(self.model, test_loader,self.criterion, self.device, get_f1=True)
 
-            print("Train Accuracy",train_accuracy)
-            print("Test Accuracy",test_accuracy)
+            log_print("Train Accuracy",train_accuracy)
+            log_print("Test Accuracy",test_accuracy)
 
     def get_obs(self):
         done = False
@@ -137,7 +138,7 @@ class AuxTaskEnv(gym.Env):
                 self.data_iter = iter(self.train_loader)
                 self.current_batch, self.current_labels = next(self.data_iter)
                 done = True
-                print("EPISODE FINISHED, steps: ",self.count)
+                log_print("EPISODE FINISHED, steps: ",self.count)
 
         image =  self.current_batch.cpu()[self.current_batch_index]
 
@@ -149,7 +150,7 @@ class AuxTaskEnv(gym.Env):
 
     def reset(self, seed=None):
         if self.verbose:
-            print("Resetting environment")
+            log_print("Resetting environment")
 
         # reset counters
         self.return_ = 0
@@ -209,9 +210,9 @@ class AuxTaskEnv(gym.Env):
             info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
             if self.verbose:
                 if self.num_batches % 50 == 0:
-                    print("num_batches",self.num_batches)
-                    print("loss",loss_class.item())
-                    print("loss_aux",loss_aux.item())
+                    log_print("num_batches",self.num_batches)
+                    log_print("loss",loss_class.item())
+                    log_print("loss_aux",loss_aux.item())
 
             loss = loss_class + self.aux_weight * loss_aux
             if self.aux_weight == 0:
@@ -228,8 +229,8 @@ class AuxTaskEnv(gym.Env):
                     loss_class_new = self.criterion(class_output, reward_labels)
                     if self.verbose:
                         if self.num_batches % 50 == 0:
-                            print("num_batches",self.num_batches)
-                            print("loss",loss_class_new.item())
+                            log_print("num_batches",self.num_batches)
+                            log_print("loss",loss_class_new.item())
                     reward =  - loss_class_new.item()
                     entropy=0.2*torch.mean(self.model.model_entropy(aux_target))
                     reward -= entropy

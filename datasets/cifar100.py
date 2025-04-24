@@ -90,7 +90,7 @@ class CIFAR100(Dataset):
         import tarfile
 
         if self._check_integrity():
-            print('Files already downloaded and verified')
+            log_print('Files already downloaded and verified')
             return
 
         root = self.root

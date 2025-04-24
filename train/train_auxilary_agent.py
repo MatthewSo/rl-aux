@@ -1,6 +1,7 @@
 import torch
 import pickle
 from train.model.performance import EpochPerformance
+from utils.log import log_print
 from utils.vars import softmax
 
 def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio, skip_rl):
@@ -12,14 +13,14 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
 
     for index in range(total_epochs):
         primary_model.train()
-        print("Starting Epoch: ", index)
+        log_print("Starting Epoch: ", index)
         if not skip_rl:
-            print(f"Skipping RL: {skip_rl}")
+            log_print(f"Skipping RL: {skip_rl}")
             env.train_label_network_with_rl(aux_task_model, ratio=model_train_ratio)
 
-        print("Finished Training Auxiliary Task Model")
+        log_print("Finished Training Auxiliary Task Model")
         env.train_main_network(aux_task_model)
-        print("Finished Training Primary Task Model")
+        log_print("Finished Training Primary Task Model")
 
         # Save the model
         env.save(aux_task_model)
@@ -52,7 +53,7 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
 
             if test_acc1 > best_training_performance:
                 best_training_performance = test_acc1
-                print(f"Best training performance so far: {best_training_performance}")
+                log_print(f"Best training performance so far: {best_training_performance}")
                 env.save(aux_task_model, save_path + '/best_model')
 
             epoch_performance = EpochPerformance(
@@ -68,7 +69,7 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
             )
             epoch_performances.append(epoch_performance)
 
-            print(epoch_performance)
+            log_print(epoch_performance)
 
             # save epoch performances as pickle. has no .save
             with open(save_path + '/epoch_performances.pkl', 'wb') as f:

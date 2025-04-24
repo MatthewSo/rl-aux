@@ -1,6 +1,8 @@
 import json
 import os
 
+from utils.log import log_print
+
 
 def create_path_name(agent_type, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset):
     return f"./trained_models/{agent_type}_{primary_model_type}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}_{dataset}"
@@ -54,4 +56,4 @@ def save_all_parameters(
     # Save the parameters to a JSON file
     with open(f"{save_path}/parameters.json", "w") as f:
         json.dump(parameters, f, indent=4)
-    print(f"Parameters saved to {save_path}/parameters.json")
+    log_print(f"Parameters saved to {save_path}/parameters.json")

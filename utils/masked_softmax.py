@@ -1,8 +1,11 @@
 import torch
 
+from utils.log import log_print
+
+
 def mask_softmax(x, mask, dim=1, epsilon=1e-8):
     if x.isnan().any():
-        print("input is NAN")
+        log_print("input is NAN")
     logits_max = torch.max(x, dim=dim, keepdim=True)[0]
     exp_logits = torch.exp(x - logits_max)
 
@@ -12,7 +15,7 @@ def mask_softmax(x, mask, dim=1, epsilon=1e-8):
 
     softmax_logits = masked_exp_logits / masked_sum
     if softmax_logits.isnan().any():
-        print("logits is NAN")
+        log_print("logits is NAN")
     return softmax_logits
 
 def create_mask_from_labels(labels, num_classes=20, num_features=100):
