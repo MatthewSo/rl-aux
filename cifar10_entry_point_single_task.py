@@ -11,7 +11,7 @@ from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.path_name import create_path_name, save_all_parameters
 
-BATCH_SIZE = 64
+BATCH_SIZE = 100
 AUX_DIMENSION = 50
 PRIMARY_DIMENSION = 10
 OBSERVATION_FEATURE_DIMENSION = 256
@@ -20,7 +20,7 @@ PRIMARY_LEARNING_RATE = 0.01
 PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
-AUX_WEIGHT = 0
+AUX_WEIGHT = 1
 TRAIN_RATIO = 1
 
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
@@ -62,7 +62,7 @@ save_all_parameters(
 #select 5th gpu
 print("Torch CUDA available:", torch.cuda.is_available())
 print("Torch CUDA device count:", torch.cuda.device_count())
-device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 
 print("Using device:", device)
 

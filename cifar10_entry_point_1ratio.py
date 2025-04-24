@@ -12,7 +12,7 @@ from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.path_name import create_path_name, save_all_parameters
 
-BATCH_SIZE = 64
+BATCH_SIZE = 100
 AUX_DIMENSION = 50
 PRIMARY_DIMENSION = 10
 OBSERVATION_FEATURE_DIMENSION = 256
@@ -21,8 +21,8 @@ PRIMARY_LEARNING_RATE = 0.01
 PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
-AUX_WEIGHT = 2
-TRAIN_RATIO = 0.5
+AUX_WEIGHT = 1
+TRAIN_RATIO = 1
 # Save locations
 
 #latest git commit hash
@@ -89,7 +89,7 @@ primary_model = VGG16(
     auxiliary_task_output=AUX_DIMENSION
 ).to(device)
 criterion = nn.CrossEntropyLoss()
-optimizer_callback = lambda x: torch.optim.Adam(x.parameters(), lr=PRIMARY_LEARNING_RATE)
+optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNING_RATE)
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 
 env = AuxTaskEnv(
