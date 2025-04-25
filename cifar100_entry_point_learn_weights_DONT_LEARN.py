@@ -123,6 +123,7 @@ auxilary_task_agent = get_ppo_agent(env=env,
                                     n_steps=79,
                                     n_epochs=10,
                                     batch_size=BATCH_SIZE,
+                                    weight_bins=21,
                                     )
 
 log_print("Done Initializing PPO Agent")

@@ -232,7 +232,8 @@ class AuxTaskEnv(gym.Env):
             loss_aux_individual = self.model.model_fit(aux_output, aux_target,pri=False, num_output=self.aux_dim, device=self.device)
 
             if self.learn_weights:
-                loss_aux = torch.mean(loss_aux_individual * weights)
+                weight_factors = torch.pow(2.0, 10.0 * weights - 5.0) 
+                loss_aux = torch.mean(loss_aux_individual * weight_factors)
                 loss = loss_class + loss_aux
             else:
                 loss_aux = torch.mean(loss_aux_individual)
