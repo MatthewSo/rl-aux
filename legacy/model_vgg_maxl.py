@@ -1,4 +1,6 @@
 from collections import OrderedDict
+
+from cifar100_entry_point_1ratio import AUX_WEIGHT
 from legacy.create_dataset import *
 
 import numpy as np
@@ -14,11 +16,13 @@ from train.model.performance import EpochPerformance
 from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name
 
+AUX_WEIGHT = 2
+
 save_path = create_path_name(
     agent_type="MAXL",
     primary_model_type="VGG",
     train_ratio=0,
-    aux_weight=0,
+    aux_weight=AUX_WEIGHT,
     observation_feature_dimensions=0,
     dataset="CIFAR100-20",
 )
@@ -358,7 +362,7 @@ for index in range(total_epoch):
             cos_mean += torch.mean(F.cosine_similarity(grads1_, grads2_, dim=-1)) / (len(grads1) - 8)
         # cosine similarity evaluation ends here
 
-        train_loss = torch.mean(train_loss1) + torch.mean(train_loss2)
+        train_loss = torch.mean(train_loss1) + AUX_WEIGHT * torch.mean(train_loss2)
         train_loss.backward()
 
         optimizer.step()
