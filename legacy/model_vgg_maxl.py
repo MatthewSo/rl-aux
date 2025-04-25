@@ -1,6 +1,5 @@
 from collections import OrderedDict
 
-from cifar100_entry_point_1ratio import AUX_WEIGHT
 from legacy.create_dataset import *
 
 import numpy as np
