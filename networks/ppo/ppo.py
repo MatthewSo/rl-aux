@@ -45,7 +45,7 @@ class ValueNet(nn.Module):
         x=x.squeeze(-1).mean(dim=-1)
         return x
 
-def get_ppo_agent( env, feature_dim, auxiliary_dim, device, batch_size, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10):
+def get_ppo_agent( env, feature_dim, auxiliary_dim, weight_bins, device, batch_size, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10):
     # Set up the RL PPO agent (of course other agent types may make sense too)
     policy_kwargs = {
         "features_extractor_class": CustomFeatureExtractor, #CustomFeatureExtractor,
@@ -54,7 +54,7 @@ def get_ppo_agent( env, feature_dim, auxiliary_dim, device, batch_size, learning
     }
 
     model = PPO("MultiInputPolicy", env, verbose=0, policy_kwargs=policy_kwargs,batch_size=batch_size, learning_rate=learning_rate,ent_coef=ent_coef,n_steps=n_steps,n_epochs=n_epochs, device=device)
-    action_net = ActionNet(feature_dim, auxiliary_dim)
+    action_net = ActionNet(feature_dim, auxiliary_dim + weight_bins)
     action_net = action_net.to(device)
     model.policy.action_net = action_net
 

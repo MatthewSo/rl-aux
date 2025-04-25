@@ -1,5 +1,4 @@
 import os
-from tabnanny import verbose
 
 import gymnasium as gym
 import torch
@@ -13,11 +12,11 @@ from utils.evaluate import evaluate
 from utils.log import log_print
 from utils.masked_softmax import create_mask_from_labels, mask_softmax
 from utils.randomization import SeededSubsetRandomSampler
-from utils.vars import softmax
 
+WEIGHT_DIMS = 21
 
 class AuxTaskEnv(gym.Env):
-    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func, batch_size, image_shape=(3,32,32),pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1, save_path='./' ):
+    def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func, batch_size, image_shape=(3,32,32),pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1, learn_weights=False, save_path='./' ):
         super(AuxTaskEnv, self).__init__()
         self.primary_dim=pri_dim
         self.aux_dim=aux_dim
@@ -27,6 +26,7 @@ class AuxTaskEnv(gym.Env):
         self.criterion = criterion
         self.verbose=verbose
         self.aux_weight=aux_weight
+        self.learn_weights = learn_weights
         self.save_path=save_path
 
         self.optimizer_func=optimizer_func
@@ -47,6 +47,7 @@ class AuxTaskEnv(gym.Env):
         self.current_batch = None
         self.current_batch_index = 0
         self.current_batch_aux_labels = []
+        self.current_batch_weights = []
 
         # create endless sampler for reward sampling
         sampler = RandomSampler(train_dataset, replacement=True,num_samples=sys.maxsize )
@@ -60,7 +61,7 @@ class AuxTaskEnv(gym.Env):
         })
 
         log_print(self.observation_space)
-        self.action_space = spaces.Box(low=-1, high=1, shape=(aux_dim,), dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete(np.array([aux_dim, WEIGHT_DIMS], dtype=np.int64))
 
         # Model for the main classification task (reset this each episode)
         self.model=copy.deepcopy(self.cannonical_model).to(self.device)
@@ -135,6 +136,7 @@ class AuxTaskEnv(gym.Env):
         if self.current_batch_index >= self.batch_size:
             self.current_batch_index = 0
             self.current_batch_aux_labels = []
+            self.current_batch_weights = []
             try:
                 self.current_batch, self.current_labels = next(self.data_iter)
                 done = False
@@ -177,6 +179,7 @@ class AuxTaskEnv(gym.Env):
         # Return the first batch as observations
         self.current_batch, self.current_labels = next(self.data_iter)
         self.current_batch_aux_labels = []
+        self.current_batch_weights = []
 
         obs, done = self.get_obs()
 
@@ -188,17 +191,34 @@ class AuxTaskEnv(gym.Env):
         info = {}
         self.count += 1
 
-        self.current_batch_aux_labels.append(action)
+        label, weight = action
+
+        self.current_batch_aux_labels.append(torch.as_tensor(label, dtype=torch.long))
+        self.current_batch_weights.append(torch.as_tensor(weight, dtype=torch.long))
 
         if len(self.current_batch_aux_labels) >= self.batch_size:
             self.num_batches += 1
 
             self.current_batch_aux_labels = [
-                torch.from_numpy(arr) if isinstance(arr, np.ndarray) else arr
-                for arr in self.current_batch_aux_labels
+                torch.from_numpy(x) if isinstance(x, np.ndarray) else x
+                for x in self.current_batch_aux_labels
             ]
-            batch_action = torch.stack(self.current_batch_aux_labels, dim=0)
+            self.current_batch_weights = [
+                torch.from_numpy(x) if isinstance(x, np.ndarray) else x
+                for x in self.current_batch_weights
+            ]
+
+            aux_labels = torch.stack(self.current_batch_aux_labels, dim=0)
+            weights    = torch.stack(self.current_batch_weights, dim=0)
+
+            weights = torch.tensor(
+                self.weight_idx_to_float(weights.cpu().numpy(), WEIGHT_DIMS),
+                dtype=torch.float32,
+                device=self.device,
+            )
+
             self.current_batch_aux_labels = []
+            self.current_batch_weights = []
 
             inputs, labels = self.current_batch.to(self.device),self.current_labels.to(self.device)
 
@@ -206,10 +226,17 @@ class AuxTaskEnv(gym.Env):
             primary_output, aux_output = self.model(inputs)
 
             mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
-            aux_target=mask_softmax(torch.tensor(batch_action).to(self.device),mask,dim=-1)
+            aux_target=mask_softmax(torch.tensor(aux_labels).to(self.device),mask,dim=-1)
 
             loss_class = torch.mean(self.model.model_fit(primary_output, labels, pri=True,num_output=self.primary_dim, device=self.device))
-            loss_aux = torch.mean(self.model.model_fit(aux_output, aux_target,pri=False, num_output=self.aux_dim, device=self.device))
+            loss_aux_individual = self.model.model_fit(aux_output, aux_target,pri=False, num_output=self.aux_dim, device=self.device)
+
+            if self.learn_weights:
+                loss_aux = torch.mean(loss_aux_individual * weights)
+                loss = loss_class + loss_aux
+            else:
+                loss_aux = torch.mean(loss_aux_individual)
+                loss = loss_class + self.aux_weight * loss_aux
 
             info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
             if self.verbose:
@@ -218,9 +245,6 @@ class AuxTaskEnv(gym.Env):
                     log_print("loss",loss_class.item())
                     log_print("loss_aux",loss_aux.item())
 
-            loss = loss_class + self.aux_weight * loss_aux
-            if self.aux_weight == 0:
-                loss = loss_class
             loss.backward()
             self.optimizer.step()
 

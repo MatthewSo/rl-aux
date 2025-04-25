@@ -4,8 +4,8 @@ import os
 from utils.log import log_print
 
 
-def create_path_name(agent_type, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset):
-    return f"./trained_models/{agent_type}_{primary_model_type}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}_{dataset}"
+def create_path_name(agent_type, learn_weights, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset):
+    return f"./trained_models/{agent_type}_{primary_model_type}_learn_weights_{learn_weights}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}_{dataset}"
 
 
 def save_all_parameters(
@@ -25,6 +25,7 @@ def save_all_parameters(
         agent_type,
         observation_feature_dimensions,
         aux_task_type,
+        learn_weights,
         primary_task_type,
         git_commit_hash,
 ):
@@ -46,6 +47,7 @@ def save_all_parameters(
         "train_ratio": train_ratio,
         "save_path": save_path,
         "dataset": dataset,
+        "learn_weights": learn_weights,
         "model_name": model_name,
         "agent_type": agent_type,
         "observation_feature_dimensions": observation_feature_dimensions,
