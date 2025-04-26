@@ -233,6 +233,10 @@ class AuxTaskEnv(gym.Env):
 
             if self.learn_weights:
                 weight_factors = torch.pow(2.0, 8.0 * weights - 3.0)
+                if self.verbose:
+                    if self.num_batches % 100 == 0:
+                        log_print("weight_factors",weight_factors)
+
                 loss_aux = torch.mean(loss_aux_individual * weight_factors)
                 loss = loss_class + loss_aux
             else:
