@@ -228,13 +228,13 @@ for index in range(total_epoch):
     epoch_performance = EpochPerformance(
         epoch=index,
         train_loss_primary=avg_cost[index][0],
-        train_loss_auxiliary=0,
+        train_loss_auxiliary=avg_cost[index][2],
         train_accuracy_primary=avg_cost[index][1],
-        train_accuracy_auxiliary=0,
-        test_loss_primary=avg_cost[index][7],
-        test_loss_auxiliary=0,
-        test_accuracy_primary=avg_cost[index][8],
-        test_accuracy_auxiliary=0,
+        train_accuracy_auxiliary=avg_cost[index][3],
+        test_loss_primary=avg_cost[index][4],
+        test_loss_auxiliary=avg_cost[index][6],
+        test_accuracy_primary=avg_cost[index][5],
+        test_accuracy_auxiliary=avg_cost[index][7],
     )
     epoch_performances.append(epoch_performance)
 
