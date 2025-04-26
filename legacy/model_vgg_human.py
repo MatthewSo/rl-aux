@@ -20,6 +20,7 @@ save_path = create_path_name(
     aux_weight=AUX_WEIGHT,
     observation_feature_dimensions=0,
     dataset="CIFAR100-20",
+    learn_weights=False,
 )
 change_log_location(save_path)
 epoch_performances=[]
