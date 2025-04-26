@@ -1,6 +1,7 @@
 import gymnasium as gym
 from stable_baselines3 import SAC
 from networks.common import CustomFeatureExtractor, ActionNet, ValueNet
+from sb3_contrib import DiscreteSAC as SAC
 
 def get_sac_agent(
         env: gym.Env,
