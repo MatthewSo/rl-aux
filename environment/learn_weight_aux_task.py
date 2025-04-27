@@ -154,7 +154,7 @@ class AuxTaskEnv(gym.Env):
 
         return {"image": image}, done
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
         if self.verbose:
             log_print("Resetting environment")
 
