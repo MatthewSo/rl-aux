@@ -1,7 +1,7 @@
 import gymnasium as gym
 from stable_baselines3 import SAC
-from networks.common import CustomFeatureExtractor, ActionNet, ValueNet
-from sb3_contrib import DiscreteSAC as SAC
+from networks.common import CustomFeatureExtractor, ActionNet, ValueNet, ContinuousToMultiDiscrete
+
 
 def get_sac_agent(
         env: gym.Env,
@@ -15,6 +15,9 @@ def get_sac_agent(
         tau: float = 0.005,
         ent_coef: str | float = "auto",
 ):
+    if isinstance(env.action_space, gym.spaces.MultiDiscrete):
+        env = ContinuousToMultiDiscrete(env)
+
     policy_kwargs = dict(
         features_extractor_class=CustomFeatureExtractor,
         features_extractor_kwargs=dict(features_dim=feature_dim),

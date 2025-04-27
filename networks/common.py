@@ -1,13 +1,8 @@
 import gymnasium as gym
-from stable_baselines3 import SAC
-from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-from torchvision import models
 import torch
 import torch.nn as nn
 import numpy as np
-from gymnasium import spaces
-from stable_baselines3 import PPO
 from networks.primary.vgg import VGG16
 
 class CustomFeatureExtractor(BaseFeaturesExtractor):
@@ -44,3 +39,22 @@ class ValueNet(nn.Module):
         x=self.fc(x)
         x=x.squeeze(-1).mean(dim=-1)
         return x
+
+class ContinuousToMultiDiscrete(gym.ActionWrapper):
+    def __init__(self, env: gym.Env):
+        super().__init__(env)
+
+        assert isinstance(env.action_space, gym.spaces.MultiDiscrete)
+
+        self.sizes = env.action_space.nvec           # e.g. [100, 21]
+        self.action_space = gym.spaces.Box(
+            low=-1.0, high=1.0, shape=(len(self.sizes),), dtype=np.float32
+        )
+
+    def _cont_to_discrete(self, a: np.ndarray) -> np.ndarray:
+        scaled   = (a + 1.0) * 0.5                    # -> [0, 1]
+        indices  = np.round(scaled * (self.sizes - 1)).astype(np.int64)
+        return np.clip(indices, 0, self.sizes - 1)
+
+    def action(self, act: np.ndarray) -> np.ndarray:
+        return self._cont_to_discrete(act)
