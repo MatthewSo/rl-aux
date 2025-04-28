@@ -18,7 +18,7 @@ def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batc
         log_print("Starting Epoch: ", index)
         if not skip_rl:
             log_print(f"Skipping RL: {skip_rl}")
-            env.train_label_network_with_rl(rl_model, ratio=model_train_ratio)
+            env.train_rl_network_with_rl(rl_model, ratio=model_train_ratio)
 
         log_print("Finished Training Auxiliary Task Model")
         env.train_main_network(rl_model)
