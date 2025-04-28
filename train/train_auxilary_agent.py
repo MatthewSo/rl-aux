@@ -55,6 +55,9 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
                 best_training_performance = test_acc1
                 log_print(f"Best training performance so far: {best_training_performance}")
                 env.save(aux_task_model, save_path + '/best_model')
+                # Save as pickle
+                with open(save_path + '/best_model.pkl', 'wb') as f:
+                    pickle.dump(aux_task_model, f)
 
             epoch_performance = EpochPerformance(
                 epoch=index,
