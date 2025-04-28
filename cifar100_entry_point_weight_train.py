@@ -11,6 +11,7 @@ from environment.learn_weight_aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
+from utils.analysis.network_details import print_aux_weights
 from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
 
@@ -133,3 +134,5 @@ auxilary_task_agent = get_ppo_agent(env=env,
 auxilary_task_agent.set_parameters(LOAD_MODEL_PATH, device=device)
 
 print("aux_labeler loaded")
+
+print_aux_weights(auxilary_task_agent, n=300)
