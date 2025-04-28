@@ -35,6 +35,7 @@ SAVE_PATH = create_path_name(
     aux_weight=AUX_WEIGHT,
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
     dataset="CIFAR100-20",
+    learn_weights=True,
 )
 
 change_log_location(SAVE_PATH)
@@ -45,7 +46,7 @@ save_all_parameters(
     primary_dimensions=PRIMARY_DIMENSION,
     total_epoch=TOTAL_EPOCH,
     primary_learning_rate=PRIMARY_LEARNING_RATE,
-    ppo_learning_rate=PPO_LEARNING_RATE,
+    rl_learning_rate=PPO_LEARNING_RATE,
     scheduler_step_size=SCHEDULER_STEP_SIZE,
     scheduler_gamma=SCHEDULER_GAMMA,
     aux_weight=AUX_WEIGHT,
@@ -58,6 +59,7 @@ save_all_parameters(
     aux_task_type="AuxTask",
     primary_task_type="VGG",
     git_commit_hash=git_hash,
+    learn_weights=True,
 )
 #device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
