@@ -13,7 +13,7 @@ from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
 
-LOAD_MODEL_PATH = "/home/cml0/rl-aux/trained_models/PPO_VGG_learn_weights_False_train_ratio_1_aux_weight_1_obs_dim_256_CIFAR100-20"
+LOAD_MODEL_PATH = "/home/cml0/rl-aux/trained_models/PPO_VGG_learn_weights_False_train_ratio_0.75_aux_weight_1_obs_dim_256_CIFAR100-20"
 BATCH_SIZE = 100
 AUX_DIMENSION = 100
 PRIMARY_DIMENSION = 20
