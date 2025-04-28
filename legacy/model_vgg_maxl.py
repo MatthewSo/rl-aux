@@ -15,7 +15,7 @@ from train.model.performance import EpochPerformance
 from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name
 
-AUX_WEIGHT = 24
+AUX_WEIGHT = 1
 
 save_path = create_path_name(
     agent_type="MAXL",
