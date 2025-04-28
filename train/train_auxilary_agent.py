@@ -1,3 +1,5 @@
+import os
+
 import torch
 import pickle
 from train.model.performance import EpochPerformance
@@ -56,8 +58,8 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
                 log_print(f"Best training performance so far: {best_training_performance}")
                 env.save(aux_task_model, save_path + '/best_model')
                 # Save as pickle
-                with open(save_path + '/best_model.pkl', 'wb') as f:
-                    pickle.dump(aux_task_model, f)
+                torch.save(aux_task_model.state_dict(),
+                           os.path.join(save_path, 'best_model.pt'))
 
             epoch_performance = EpochPerformance(
                 epoch=index,
