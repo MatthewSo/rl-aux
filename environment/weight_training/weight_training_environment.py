@@ -21,8 +21,6 @@ class WeightTuningEnv(gym.Env):
         self.train_dataset = train_dataset
         self.cannonical_model = copy.deepcopy(model)
         self.labeler = labeler
-        for p in self.labeler.parameters():
-            p.requires_grad_(False)
         self.criterion = criterion
         self.verbose = verbose
         self.save_path = save_path
