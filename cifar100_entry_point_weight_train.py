@@ -5,6 +5,7 @@ import torch
 from stable_baselines3 import PPO
 from torch import nn
 
+from cifar100_entry_point_learn_weights import LEARN_WEIGHTS
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import trans_train, trans_test
 from environment.aux_task import AuxTaskEnv
@@ -25,6 +26,7 @@ PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0
+LEARN_WEIGHTS = True
 TRAIN_RATIO = 1
 
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
@@ -70,11 +72,7 @@ device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 log_print("Using device:", device)
 
-# ---------
 
-aux_labeler = PPO.load(LOAD_MODEL_PATH)
-
-print("aux_labeler loaded")
 # ---------
 
 cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=True)
@@ -103,3 +101,36 @@ criterion = nn.CrossEntropyLoss()
 
 optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNING_RATE)
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
+# ---------
+
+env = AuxTaskEnv(
+    train_dataset=course_cifar_train_set,
+    device=device,
+    model=primary_model,
+    criterion=criterion,
+    optimizer_func=optimizer_callback,
+    scheduler_func=scheduler_callback,
+    batch_size=BATCH_SIZE,
+    pri_dim=PRIMARY_DIMENSION,
+    aux_dim=AUX_DIMENSION,
+    aux_weight=AUX_WEIGHT,
+    save_path=SAVE_PATH,
+    learn_weights=LEARN_WEIGHTS,
+    verbose=True,
+)
+
+auxilary_task_agent = get_ppo_agent(env=env,
+                                    feature_dim=OBSERVATION_FEATURE_DIMENSION,
+                                    auxiliary_dim=AUX_DIMENSION,
+                                    learning_rate=PPO_LEARNING_RATE,
+                                    device=device,
+                                    ent_coef=0.01,
+                                    n_steps=79,
+                                    n_epochs=10,
+                                    batch_size=BATCH_SIZE,
+                                    weight_bins=21,
+                                    )
+
+auxilary_task_agent.set_parameters(LOAD_MODEL_PATH, device=device)
+
+print("aux_labeler loaded")
