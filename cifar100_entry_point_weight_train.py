@@ -64,14 +64,12 @@ save_all_parameters(
     git_commit_hash=git_hash,
     learn_weights=True,
 )
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 log_print("Torch CUDA available:", torch.cuda.is_available())
 log_print("Torch CUDA device count:", torch.cuda.device_count())
 device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 log_print("Using device:", device)
-
 
 # ---------
 
@@ -96,8 +94,6 @@ primary_model = VGG16(
     auxiliary_task_output=AUX_DIMENSION
 ).to(device)
 criterion = nn.CrossEntropyLoss()
-#optimizer_callback = lambda x: torch.optim.Adam(x.parameters(), lr=PRIMARY_LEARNING_RATE)
-#scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 
 optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNING_RATE)
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
@@ -132,7 +128,3 @@ auxilary_task_agent = get_ppo_agent(env=env,
                                     )
 
 auxilary_task_agent.set_parameters(LOAD_MODEL_PATH, device=device)
-
-print("aux_labeler loaded")
-
-print_aux_weights(auxilary_task_agent, n=300)
