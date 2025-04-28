@@ -73,14 +73,35 @@ def get_fast_dummy_ppo_agent(
     )
     return model
 
+class CompatActionNet(nn.Module):
+    def __init__(self, in_dim, out_dim):
+        super().__init__()
+        self.fc = nn.Linear(in_dim, out_dim)
+        # alias so load() finds the expected keys
+        self.weight = self.fc.weight
+        self.bias   = self.fc.bias
+    def forward(self, x):
+        return self.fc(x.reshape(-1, self.fc.in_features))
+
+class CompatValueNet(nn.Module):
+    def __init__(self, in_dim):
+        super().__init__()
+        self.fc = nn.Linear(in_dim, 1)
+        self.weight = self.fc.weight
+        self.bias   = self.fc.bias
+    def forward(self, x):
+        return self.fc(x.reshape(-1, self.fc.in_features)).squeeze(-1).mean(dim=-1)
+
 def load_ppo_labeler(checkpoint_dir: str,
-                     device):
+                     device: str | torch.device = "cpu") -> PPO:
     agent_path = os.path.join(checkpoint_dir, "agent")
-    ppo_agent = PPO.load(
+    return PPO.load(
         agent_path,
         device=device,
-        custom_objects={"CustomFeatureExtractor": CustomFeatureExtractor},
+        custom_objects=dict(
+            CustomFeatureExtractor=CustomFeatureExtractor,
+            ActionNet=CompatActionNet,
+            ValueNet=CompatValueNet,
+        ),
         print_system_info=False
     )
-    ppo_agent.policy.eval()
-    return ppo_agent
