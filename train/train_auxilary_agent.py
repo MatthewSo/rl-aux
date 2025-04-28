@@ -6,7 +6,7 @@ from train.model.performance import EpochPerformance
 from utils.log import log_print
 from utils.vars import softmax
 
-def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio, skip_rl):
+def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio, skip_rl):
     epoch_performances = []
     epoch_performance = None
     num_test_batches = len(test_loader)
@@ -18,14 +18,14 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
         log_print("Starting Epoch: ", index)
         if not skip_rl:
             log_print(f"Skipping RL: {skip_rl}")
-            env.train_label_network_with_rl(aux_task_model, ratio=model_train_ratio)
+            env.train_label_network_with_rl(rl_model, ratio=model_train_ratio)
 
         log_print("Finished Training Auxiliary Task Model")
-        env.train_main_network(aux_task_model)
+        env.train_main_network(rl_model)
         log_print("Finished Training Primary Task Model")
 
         # Save the model
-        env.save(aux_task_model)
+        env.save(rl_model)
 
         primary_model=env.cannonical_model
         primary_model.eval()
@@ -56,8 +56,8 @@ def train_auxilary_agent(primary_model, aux_task_model, device, env, test_loader
             if test_acc1 > best_training_performance:
                 best_training_performance = test_acc1
                 log_print(f"Best training performance so far: {best_training_performance}")
-                env.save(aux_task_model, save_path + '/best_model')
-                aux_task_model.save(save_path + "/best_model_auxiliary")
+                env.save(rl_model, save_path + '/best_model')
+                rl_model.save(save_path + "/best_model_auxiliary")
                 # Save primary model
                 primary_model.save(save_path + '/best_model_primary')
 

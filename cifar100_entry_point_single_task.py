@@ -119,7 +119,7 @@ log_print("Done Initializing PPO Agent")
 # Train the PPO agent
 train_auxilary_agent(
     primary_model=primary_model,
-    aux_task_model=auxilary_task_agent,
+    rl_model=auxilary_task_agent,
     env=env,
     device=device,
     test_loader=cifar100_test_loader,

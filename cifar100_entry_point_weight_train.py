@@ -8,8 +8,10 @@ from torch import nn
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import trans_train, trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
+from environment.weight_training.weight_training_environment import WeightTuningEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16
+from networks.weight_training.ppo import get_weight_training_ppo_agent
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.analysis.network_details import print_aux_weights
 from utils.log import log_print, change_log_location
@@ -99,7 +101,7 @@ optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNI
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 # ---------
 
-env = AuxTaskEnv(
+task_env = AuxTaskEnv(
     train_dataset=course_cifar_train_set,
     device=device,
     model=primary_model,
@@ -115,7 +117,7 @@ env = AuxTaskEnv(
     verbose=True,
 )
 
-auxilary_task_agent = get_ppo_agent(env=env,
+auxilary_task_agent = get_ppo_agent(env=task_env,
                                     feature_dim=OBSERVATION_FEATURE_DIMENSION,
                                     auxiliary_dim=AUX_DIMENSION,
                                     learning_rate=PPO_LEARNING_RATE,
@@ -128,3 +130,43 @@ auxilary_task_agent = get_ppo_agent(env=env,
                                     )
 
 auxilary_task_agent.set_parameters(LOAD_MODEL_PATH, device=device)
+
+# ----
+
+weight_tuning_env = WeightTuningEnv(
+    train_dataset=course_cifar_train_set,
+    device=device,
+    model=primary_model,
+    labeler=auxilary_task_agent,
+    criterion=criterion,
+    optimizer_func=optimizer_callback,
+    scheduler_func=scheduler_callback,
+    batch_size=BATCH_SIZE,
+    pri_dim=PRIMARY_DIMENSION,
+    aux_dim=AUX_DIMENSION,
+    save_path=SAVE_PATH,
+    verbose=True
+)
+
+weight_tuning_ppo_agent = get_weight_training_ppo_agent(weight_tuning_env,
+                                                         feature_dim=OBSERVATION_FEATURE_DIMENSION,
+                                                         device=device,
+                                                         batch_size=BATCH_SIZE,
+                                                         learning_rate=PPO_LEARNING_RATE,
+                                                         ent_coef=0.01,
+                                                         n_steps=79,
+                                                         n_epochs=10)
+
+train_auxilary_agent(
+    primary_model=primary_model,
+    rl_model=weight_tuning_ppo_agent,
+    env=weight_tuning_env,
+    device=device,
+    test_loader=cifar100_test_loader,
+    batch_size=BATCH_SIZE,
+    total_epochs=TOTAL_EPOCH,
+    save_path=SAVE_PATH,
+    model_train_ratio=TRAIN_RATIO,
+    primary_dimension=PRIMARY_DIMENSION,
+    skip_rl=False
+)
