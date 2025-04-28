@@ -14,6 +14,7 @@ def plot_epoch_metrics(
         x_window: Optional[Tuple[float, float]] = None,
         y_window_loss: Optional[Tuple[float, float]] = None,
         y_window_acc: Optional[Tuple[float, float]]  = None,
+        figsize: Tuple[float, float] = (7, 4),
 ):
     suffix = "auxiliary" if aux else "primary"
 
@@ -56,7 +57,7 @@ def plot_epoch_metrics(
 
         plt.figure(figsize=(7, 4))
         for epochs, values, lbl in series:
-            plt.plot(epochs, values, marker='o', label=lbl)
+            plt.plot(epochs, values, label=lbl)
 
         plt.title(f"{metric.capitalize()} ({suffix})")
         plt.xlabel("Epoch")
