@@ -2,6 +2,7 @@ import subprocess
 from tabnanny import verbose
 
 import torch
+from stable_baselines3 import PPO
 from torch import nn
 
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
@@ -13,7 +14,7 @@ from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
 
-LOAD_MODEL_PATH = "/home/cml0/rl-aux/trained_models/PPO_VGG_learn_weights_False_train_ratio_0.75_aux_weight_1_obs_dim_256_CIFAR100-20"
+LOAD_MODEL_PATH = "/home/cml0/rl-aux/trained_models/'PPO_VGG_learn_weights_False_train_ratio_1_aux_weight_1_obs_dim_256_CIFAR100-20(version2)best_model_obtained.zip'"
 BATCH_SIZE = 100
 AUX_DIMENSION = 100
 PRIMARY_DIMENSION = 20
@@ -71,9 +72,9 @@ log_print("Using device:", device)
 
 # ---------
 
-labeler_model = load_ppo_labeler(LOAD_MODEL_PATH, device)
-log_print("Labeler model loaded from:", LOAD_MODEL_PATH)
+aux_labeler = PPO.load(LOAD_MODEL_PATH)
 
+print("aux_labeler loaded")
 # ---------
 
 cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=True)
