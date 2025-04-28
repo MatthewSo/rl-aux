@@ -73,35 +73,82 @@ def get_fast_dummy_ppo_agent(
     )
     return model
 
-class _HeadLinear(nn.Module):
-    def __init__(self, in_dim: int, out_dim: int = 1):
-        super().__init__()
-        self.weight = nn.Parameter(torch.empty(out_dim, in_dim))
-        self.bias   = nn.Parameter(torch.empty(out_dim))
-        nn.init.xavier_uniform_(self.weight)
-        nn.init.zeros_(self.bias)
+import os
+from collections import OrderedDict
 
-    def forward(self, x):
-        x = x.reshape(-1, self.weight.shape[1])
-        return nn.functional.linear(x, self.weight, self.bias)
+import torch
+from gymnasium import spaces
+from stable_baselines3 import PPO
+from stable_baselines3.common.save_util import load_from_zip_file
+
+from networks.common import CustomFeatureExtractor                      # backbone
+from networks.common import ActionNet, ValueNet                         # original heads
 
 
-CompatActionNet = lambda in_dim, out_dim: _HeadLinear(in_dim, out_dim)
-CompatValueNet  = lambda in_dim:          _HeadLinear(in_dim, 1)
+def _rename_fc_keys(state_dict: dict) -> dict:
+    """turn  action_net.fc.* → action_net.*   and   value_net.fc.* → value_net.*"""
+    new_sd = OrderedDict()
+    for k, v in state_dict.items():
+        if k.startswith("action_net.fc."):
+            new_sd[k.replace("action_net.fc.", "action_net.")] = v
+        elif k.startswith("value_net.fc."):
+            new_sd[k.replace("value_net.fc.", "value_net.")] = v
+        else:
+            new_sd[k] = v
+    return new_sd
 
 
 def load_ppo_labeler(checkpoint_dir: str,
+                     obs_shape=(3, 32, 32),
                      device: str | torch.device = "cpu") -> PPO:
-    path = os.path.join(checkpoint_dir, "agent")
-    agent = PPO.load(
-        path,
-        device=device,
-        custom_objects=dict(
-            CustomFeatureExtractor=CustomFeatureExtractor,
-            ActionNet=CompatActionNet,
-            ValueNet = CompatValueNet,
-        ),
-        print_system_info=False,
+    """
+    Restore a PPO labeler whose checkpoint contains `fc.*` sub-keys.
+
+    Parameters
+    ----------
+    checkpoint_dir : str
+        Folder that contains `agent.zip` (saved via `env.save(..., dir)`).
+    obs_shape : tuple[int]
+        Image shape so we can create a dummy env for policy instantiation.
+    device : str | torch.device
+        Destination device.
+
+    Returns
+    -------
+    PPO
+        Fully loaded PPO object.
+    """
+    agent_path = os.path.join(checkpoint_dir, "agent")
+
+    # ------------------------------------------------------------------ #
+    # 1) make a dummy single-step env just to build the policy structure
+    # ------------------------------------------------------------------ #
+    class _DummyEnv(gym.Env):
+        def __init__(self):
+            super().__init__()
+            self.observation_space = spaces.Dict(
+                {"image": spaces.Box(0, 1, shape=obs_shape, dtype=float)}
+            )
+            self.action_space = spaces.MultiDiscrete([1])          # placeholder
+        def reset(self, *, seed=None, options=None): return {"image": torch.zeros(obs_shape)}, {}
+        def step(self, action): return self.reset()[0], 0.0, True, False, {}
+
+    dummy_env = _DummyEnv()
+
+    policy_kwargs = dict(
+        features_extractor_class=CustomFeatureExtractor,
+        features_extractor_kwargs=dict(features_dim=512),          # value never used
+        net_arch=[],
     )
-    agent.policy.eval()
-    return agent
+    empty_agent = PPO("MultiInputPolicy", dummy_env,
+                      policy_kwargs=policy_kwargs,
+                      device=device, verbose=0)
+
+    # ------------------------------------------------------------------ #
+    # 2) read raw checkpoint tensors, rename keys, inject them
+    # ------------------------------------------------------------------ #
+    params, _, _ = load_from_zip_file(agent_path, device=device)
+    renamed = _rename_fc_keys(params["policy"])
+    empty_agent.policy.load_state_dict(renamed, strict=True)
+    empty_agent.policy.eval()
+    return empty_agent
