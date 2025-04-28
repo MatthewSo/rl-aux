@@ -51,6 +51,11 @@ def plot_epoch_metrics(
                 label,
             ))
 
+        # print average accuracy for last 15 epochs
+        if len(epoch_data) > 15:
+            avg_accuracy = sum(getattr(e, f"test_accuracy_{suffix}") for e in epoch_data[-15:]) / 15
+            print(f"Average test accuracy of {label}: {avg_accuracy:.4f}")
+
     for metric, series in curves.items():
         if not series:                   # skip empty (e.g. train=False)
             continue
