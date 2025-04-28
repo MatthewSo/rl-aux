@@ -73,35 +73,35 @@ def get_fast_dummy_ppo_agent(
     )
     return model
 
-class CompatActionNet(nn.Module):
-    def __init__(self, in_dim, out_dim):
+class _HeadLinear(nn.Module):
+    def __init__(self, in_dim: int, out_dim: int = 1):
         super().__init__()
-        self.fc = nn.Linear(in_dim, out_dim)
-        # alias so load() finds the expected keys
-        self.weight = self.fc.weight
-        self.bias   = self.fc.bias
-    def forward(self, x):
-        return self.fc(x.reshape(-1, self.fc.in_features))
+        self.weight = nn.Parameter(torch.empty(out_dim, in_dim))
+        self.bias   = nn.Parameter(torch.empty(out_dim))
+        nn.init.xavier_uniform_(self.weight)
+        nn.init.zeros_(self.bias)
 
-class CompatValueNet(nn.Module):
-    def __init__(self, in_dim):
-        super().__init__()
-        self.fc = nn.Linear(in_dim, 1)
-        self.weight = self.fc.weight
-        self.bias   = self.fc.bias
     def forward(self, x):
-        return self.fc(x.reshape(-1, self.fc.in_features)).squeeze(-1).mean(dim=-1)
+        x = x.reshape(-1, self.weight.shape[1])
+        return nn.functional.linear(x, self.weight, self.bias)
+
+
+CompatActionNet = lambda in_dim, out_dim: _HeadLinear(in_dim, out_dim)
+CompatValueNet  = lambda in_dim:          _HeadLinear(in_dim, 1)
+
 
 def load_ppo_labeler(checkpoint_dir: str,
                      device: str | torch.device = "cpu") -> PPO:
-    agent_path = os.path.join(checkpoint_dir, "agent")
-    return PPO.load(
-        agent_path,
+    path = os.path.join(checkpoint_dir, "agent")
+    agent = PPO.load(
+        path,
         device=device,
         custom_objects=dict(
             CustomFeatureExtractor=CustomFeatureExtractor,
             ActionNet=CompatActionNet,
-            ValueNet=CompatValueNet,
+            ValueNet = CompatValueNet,
         ),
-        print_system_info=False
+        print_system_info=False,
     )
+    agent.policy.eval()
+    return agent
