@@ -55,7 +55,7 @@ def plot_epoch_metrics(
         if not series:                   # skip empty (e.g. train=False)
             continue
 
-        plt.figure(figsize=(7, 4))
+        plt.figure(figsize=figsize)
         for epochs, values, lbl in series:
             plt.plot(epochs, values, label=lbl)
 
