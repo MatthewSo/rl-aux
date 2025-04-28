@@ -1,3 +1,5 @@
+import os
+
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import torch
 import torch.nn as nn
@@ -70,3 +72,15 @@ def get_fast_dummy_ppo_agent(
         policy_kwargs=policy_kwargs,
     )
     return model
+
+def load_ppo_labeler(checkpoint_dir: str,
+                     device):
+    path = os.path.join(checkpoint_dir, "agent")
+    custom_objects = {
+        "CustomFeatureExtractor": CustomFeatureExtractor,
+        "ActionNet": ActionNet,
+        "ValueNet": ValueNet,
+    }
+    ppo_agent: PPO = PPO.load(path, device=device, custom_objects=custom_objects)
+    ppo_agent.policy.eval()
+    return ppo_agent
