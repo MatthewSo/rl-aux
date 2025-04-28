@@ -53,11 +53,12 @@ class LabelGenerator(nn.Module):
             nn.Linear(filter[-1], int(np.sum(self.class_nb))),
         )
 
-        # another head to output 0-1 weight shape needs to be (1, batchsize)
+        # another head to output 0-1 value s.t. shape needs to be (1, batchsize)
         self.weight_head = nn.Sequential(
             nn.Linear(filter[-1], filter[-1]),
             nn.ReLU(inplace=True),
             nn.Linear(filter[-1], 1),
+            nn.Sigmoid()
         )
 
         # apply weight initialisation
