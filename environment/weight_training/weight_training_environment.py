@@ -20,7 +20,7 @@ class WeightTuningEnv(gym.Env):
         self.batch_size = batch_size
         self.train_dataset = train_dataset
         self.cannonical_model = copy.deepcopy(model)
-        self.labeler = labeler.to(device).eval()
+        self.labeler = labeler
         for p in self.labeler.parameters():
             p.requires_grad_(False)
         self.criterion = criterion
