@@ -35,7 +35,7 @@ SAVE_PATH = create_path_name(
     aux_weight=AUX_WEIGHT,
     learn_weights=LEARN_WEIGHTS,
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
-    dataset="CIFAR100-20(version2)",
+    dataset="CIFAR100-20v2",
 )
 
 change_log_location(SAVE_PATH)
