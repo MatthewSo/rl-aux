@@ -102,3 +102,22 @@ class VGG16(nn.Module):
         loss1 = x_pred1 * torch.log(x_pred1 + 1e-20)
 
         return torch.sum(loss1)
+
+    def save(self, path):
+        torch.save(
+            {
+                "state_dict": self.state_dict(),
+                "primary_task_output": self._pri_out,
+                "auxiliary_task_output": self._aux_out,
+            },
+            path,
+        )
+
+    @classmethod
+    def load(cls, path, device="cpu"):
+        ckpt = torch.load(path, map_location=device)
+        model = cls(ckpt["primary_task_output"], ckpt["auxiliary_task_output"])
+        model.load_state_dict(ckpt["state_dict"])
+        model.to(device)
+        model.eval()
+        return model
