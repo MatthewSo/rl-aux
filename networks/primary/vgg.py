@@ -9,6 +9,9 @@ class VGG16(nn.Module):
             multi-task network:
             takes the input and predicts primary and auxiliary labels (same network structure as in human)
         """
+        self._pri_out = primary_task_output
+        self._aux_out = auxiliary_task_output
+
         filter = [64, 128, 256, 512, 512]
 
         # define convolution block in VGG-16
