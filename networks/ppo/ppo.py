@@ -75,12 +75,12 @@ def get_fast_dummy_ppo_agent(
 
 def load_ppo_labeler(checkpoint_dir: str,
                      device):
-    path = os.path.join(checkpoint_dir, "agent")
-    custom_objects = {
-        "CustomFeatureExtractor": CustomFeatureExtractor,
-        "ActionNet": nn.Linear,
-        "ValueNet": nn.Linear,
-    }
-    ppo_agent: PPO = PPO.load(path, device=device, custom_objects=custom_objects)
+    agent_path = os.path.join(checkpoint_dir, "agent")
+    ppo_agent = PPO.load(
+        agent_path,
+        device=device,
+        custom_objects={"CustomFeatureExtractor": CustomFeatureExtractor},
+        print_system_info=False
+    )
     ppo_agent.policy.eval()
     return ppo_agent
