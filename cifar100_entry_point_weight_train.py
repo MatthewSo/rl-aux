@@ -5,10 +5,8 @@ import torch
 from stable_baselines3 import PPO
 from torch import nn
 
-from cifar100_entry_point_learn_weights import LEARN_WEIGHTS
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import trans_train, trans_test
-from environment.aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
