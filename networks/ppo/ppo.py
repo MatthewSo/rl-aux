@@ -78,8 +78,8 @@ def load_ppo_labeler(checkpoint_dir: str,
     path = os.path.join(checkpoint_dir, "agent")
     custom_objects = {
         "CustomFeatureExtractor": CustomFeatureExtractor,
-        "ActionNet": ActionNet,
-        "ValueNet": ValueNet,
+        "ActionNet": nn.Linear,
+        "ValueNet": nn.Linear,
     }
     ppo_agent: PPO = PPO.load(path, device=device, custom_objects=custom_objects)
     ppo_agent.policy.eval()
