@@ -87,6 +87,7 @@ class WeightTuningEnv(gym.Env):
 
         self.current_batch_index += 1
         if self.verbose:
+            print("First 30 pixels of image:", image.flatten()[:30])
             print(self.obs_hash({"image": image}))
         return {"image": image}, done
 
