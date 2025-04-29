@@ -144,6 +144,10 @@ class WeightTuningEnv(gym.Env):
                     log_print("num_batches",self.num_batches)
                     log_print("loss",loss_class.item())
                     log_print("loss_aux",loss_aux.item())
+                if self.num_batches % 100 == 0:
+                    # print first 30 weight factors
+                    log_print("weight_factors", weight_factors[:30])
+                    log_print("weights", weights[:30])
 
             loss = loss_class + loss_aux
             loss.backward()
