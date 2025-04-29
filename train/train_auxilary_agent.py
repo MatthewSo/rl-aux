@@ -14,12 +14,13 @@ def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batc
     best_training_performance = 0
 
     # Pretrain the RL model
-    for index in range(rl_pretraining_epochs):
-        primary_model.train()
-        log_print("Starting RL Pretraining Epoch: ", index)
-        env.train_rl_network_with_rl(rl_model, ratio=model_train_ratio)
+    if rl_pretraining_epochs > 0:
+        for index in range(rl_pretraining_epochs):
+            primary_model.train()
+            log_print("Starting RL Pretraining Epoch: ", index)
+            env.train_rl_network_with_rl(rl_model, ratio=model_train_ratio)
 
-        env.save(rl_model)
+            env.save(rl_model)
 
     for index in range(total_epochs):
         primary_model.train()
