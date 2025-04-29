@@ -59,7 +59,8 @@ class WeightTuningEnv(gym.Env):
         done = False
         if len(self.current_batch) < self.batch_size:
             image = self.current_batch.cpu()[self.current_batch_index]
-            aux_task_action, weight_action = self.labeler.predict({"image": image})
+            action = self.labeler.predict({"image": image})
+            aux_task_action, weight_task_action = action
             self.current_batch_aux_labels.append(aux_task_action)
             return {"image": image}, True
         if self.current_batch_index >= self.batch_size:
@@ -75,7 +76,8 @@ class WeightTuningEnv(gym.Env):
         image = self.current_batch.cpu()[self.current_batch_index]
         image = image.numpy().astype(np.float32)
 
-        aux_task_action, weight_action = self.labeler.predict({"image": image})
+        action = self.labeler.predict({"image": image})
+        aux_task_action, weight_task_action = action
         self.current_batch_aux_labels.append(aux_task_action)
 
         self.current_batch_index += 1
