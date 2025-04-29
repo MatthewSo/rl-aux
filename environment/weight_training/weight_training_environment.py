@@ -178,6 +178,8 @@ class WeightTuningEnv(gym.Env):
                     loss_class_new = self.criterion(class_output, reward_labels)
                     reward = -loss_class_new.item()
                     self.return_ += reward
+
+                self.reset()
         obs, done = self.get_obs()
         return obs, reward, done, False, info
     def render(self, mode='human'):
