@@ -106,8 +106,7 @@ class WeightTuningEnv(gym.Env):
         reward = 0
         info = {}
         self.count += 1
-        #weight = float(np.clip(action, 0.0, 1.0))
-        self.current_batch_weights.append(torch.tensor(action, dtype=torch.long))
+        self.current_batch_weights.append(torch.tensor(action, dtype=torch.float32))
         if len(self.current_batch_weights) >= self.batch_size:
             self.num_batches += 1
 
