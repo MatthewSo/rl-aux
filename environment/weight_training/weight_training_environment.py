@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader, RandomSampler, SubsetRandomSampler
 import copy
 import random
 import sys
+
+from utils.log import log_print
 from utils.masked_softmax import create_mask_from_labels, mask_softmax
 from utils.randomization import SeededSubsetRandomSampler
 import torch.nn.functional as F
@@ -124,13 +126,6 @@ class WeightTuningEnv(gym.Env):
             aux_labels = torch.stack(self.current_batch_aux_labels, dim=0).to(self.device)
             aux_labels_onehot = F.one_hot(aux_labels.long(), num_classes=self.aux_dim).float()
 
-            print("Current batch weights:", self.current_batch_weights)
-            print("Current batch aux labels:", self.current_batch_aux_labels)
-            print("Current batch labels:", labels)
-            print("Current batch weight shape:", torch.stack(self.current_batch_weights, dim=0).shape)
-            print("Current batch aux labels shape:", torch.stack(self.current_batch_aux_labels, dim=0).shape)
-            print("Current batch labels shape:", labels.shape)
-
             aux_target = mask_softmax(aux_labels_onehot, mask, dim=-1)
             self.current_batch_aux_labels = []
             self.current_batch_weights = []
@@ -143,6 +138,13 @@ class WeightTuningEnv(gym.Env):
             weight_factors = torch.pow(2.0, 10.0 * weights - 5.0)
 
             loss_aux = torch.mean(loss_aux_individual * weight_factors)
+
+            if self.verbose:
+                if self.num_batches % 50 == 0:
+                    log_print("num_batches",self.num_batches)
+                    log_print("loss",loss_class.item())
+                    log_print("loss_aux",loss_aux.item())
+
             loss = loss_class + loss_aux
             loss.backward()
             self.optimizer.step()
