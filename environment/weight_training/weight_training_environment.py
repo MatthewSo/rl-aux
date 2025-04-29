@@ -124,6 +124,13 @@ class WeightTuningEnv(gym.Env):
             aux_labels = torch.stack(self.current_batch_aux_labels, dim=0).to(self.device)
             aux_labels_onehot = F.one_hot(aux_labels.long(), num_classes=self.aux_dim).float()
 
+            print("Current batch weights:", self.current_batch_weights)
+            print("Current batch aux labels:", self.current_batch_aux_labels)
+            print("Current batch labels:", labels)
+            print("Current batch weight shape:", torch.stack(self.current_batch_weights, dim=0).shape)
+            print("Current batch aux labels shape:", torch.stack(self.current_batch_aux_labels, dim=0).shape)
+            print("Current batch labels shape:", labels.shape)
+
             aux_target = mask_softmax(aux_labels_onehot, mask, dim=-1)
             self.current_batch_aux_labels = []
             self.current_batch_weights = []
