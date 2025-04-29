@@ -9,6 +9,7 @@ import random
 import sys
 from utils.masked_softmax import create_mask_from_labels, mask_softmax
 from utils.randomization import SeededSubsetRandomSampler
+import torch.nn.functional as F
 
 class WeightTuningEnv(gym.Env):
     def __init__(self, train_dataset, device, model, labeler, criterion, optimizer_func,
@@ -106,6 +107,7 @@ class WeightTuningEnv(gym.Env):
         if len(self.current_batch_weights) >= self.batch_size:
             self.num_batches += 1
 
+            inputs, labels = self.current_batch.to(self.device),self.current_labels.to(self.device)
             self.current_batch_aux_labels = [
                 torch.from_numpy(x) if isinstance(x, np.ndarray) else x
                 for x in self.current_batch_aux_labels
@@ -115,13 +117,14 @@ class WeightTuningEnv(gym.Env):
                 for x in self.current_batch_weights
             ]
 
+            mask = create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim).to(self.device)
             weights = torch.stack(self.current_batch_weights, dim=0).to(self.device)
             aux_labels = torch.stack(self.current_batch_aux_labels, dim=0).to(self.device)
-            self.current_batch_weights = []
+            aux_labels_onehot = F.one_hot(aux_labels.long(), num_classes=self.aux_dim).float()
 
-            inputs, labels = self.current_batch.to(self.device),self.current_labels.to(self.device)
-            mask = create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim).to(self.device)
-            aux_target = mask_softmax(torch.tensor(aux_labels).to(self.device), mask, dim=-1)
+            aux_target = mask_softmax(aux_labels_onehot, mask, dim=-1)
+            self.current_batch_aux_labels = []
+            self.current_batch_weights = []
 
             self.optimizer.zero_grad()
             primary_output, aux_output = self.model(inputs)
