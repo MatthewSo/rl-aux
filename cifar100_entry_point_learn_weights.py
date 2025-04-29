@@ -46,7 +46,7 @@ save_all_parameters(
     primary_dimensions=PRIMARY_DIMENSION,
     total_epoch=TOTAL_EPOCH,
     primary_learning_rate=PRIMARY_LEARNING_RATE,
-    ppo_learning_rate=PPO_LEARNING_RATE,
+    rl_learning_rate=PPO_LEARNING_RATE,
     scheduler_step_size=SCHEDULER_STEP_SIZE,
     scheduler_gamma=SCHEDULER_GAMMA,
     aux_weight=AUX_WEIGHT,
