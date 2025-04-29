@@ -123,8 +123,8 @@ class WeightTuningEnv(gym.Env):
             log_print("Step", self.count)
             log_print("Action", action)
 
-        action_clamped = torch.clamp(action, min=0.0, max=32.0)
-        self.current_batch_weights.append(torch.tensor(action_clamped, dtype=torch.float32))
+        action_clamped = torch.clamp(torch.tensor(action, dtype=torch.float32), min=0.0, max=32.0)
+        self.current_batch_weights.append(action_clamped)
         if len(self.current_batch_weights) >= self.batch_size:
             self.num_batches += 1
 

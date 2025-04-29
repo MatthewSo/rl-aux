@@ -168,5 +168,5 @@ train_auxilary_agent(
     save_path=SAVE_PATH,
     model_train_ratio=TRAIN_RATIO,
     primary_dimension=PRIMARY_DIMENSION,
-    skip_rl=True
+    skip_rl=False
 )
