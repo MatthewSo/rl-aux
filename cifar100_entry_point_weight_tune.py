@@ -34,7 +34,7 @@ TRAIN_RATIO = 1
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
-    agent_type="WEIGHT_TUNING_PPO_50Pretraining_RESET",
+    agent_type="WEIGHT_TUNING_PPO_RESET",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
@@ -169,5 +169,5 @@ train_auxilary_agent(
     model_train_ratio=TRAIN_RATIO,
     primary_dimension=PRIMARY_DIMENSION,
     skip_rl=False,
-    rl_pretraining_epochs=50,
+    rl_pretraining_epochs=0,
 )
