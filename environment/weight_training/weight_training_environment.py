@@ -184,3 +184,22 @@ class WeightTuningEnv(gym.Env):
             action, _ = weight_agent.predict(obs, deterministic=True)
             obs, _, done, _, _ = self.step(action, give_reward=False)
         self.update()
+
+    def save(self, agent, save_path=None):
+        if save_path is None:
+            save_path = self.save_path
+
+        # make path if needed
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
+        # Save the model and optimizer state
+        torch.save(self.model.state_dict(), save_path + "/model.pth")
+        torch.save(self.optimizer.state_dict(), save_path + "/optimizer.pth")
+        torch.save(self.scheduler.state_dict(), save_path + "/scheduler.pth")
+
+        # Save the cannonical model
+        torch.save(self.cannonical_model.state_dict(), save_path + "/cannonical_model.pth")
+
+        # Save the agent stable baselines 3
+        agent.save(save_path + "/agent")
