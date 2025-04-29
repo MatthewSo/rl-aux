@@ -269,6 +269,8 @@ class AuxTaskEnv(gym.Env):
                     reward -= entropy
                     self.return_ +=reward
 
+                self.reset()
+
         obs, done = self.get_obs()
         return obs, reward, done, False, info
 

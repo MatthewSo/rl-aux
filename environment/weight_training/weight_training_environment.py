@@ -173,13 +173,20 @@ class WeightTuningEnv(gym.Env):
             if give_reward:
                 with torch.no_grad():
                     reward_batch, reward_labels = next(self.reward_sampler)
-                    reward_batch, reward_labels = reward_batch.to(self.device), reward_labels.to(self.device)
-                    class_output, _ = self.model(reward_batch)
-                    loss_class_new = self.criterion(class_output, reward_labels)
-                    reward = -loss_class_new.item()
-                    self.return_ += reward
+                    reward_batch, reward_labels = reward_batch.to(self.device),reward_labels.to(self.device)
 
-                self.reset()
+                    class_output, aux_output = self.model(reward_batch)
+                    loss_class_new = self.criterion(class_output, reward_labels)
+                    if self.verbose:
+                        if self.num_batches % 50 == 0:
+                            log_print("reward num_batches",self.num_batches)
+                            log_print("reward loss",loss_class_new.item())
+                    reward =  - loss_class_new.item()
+                    entropy=0.2*torch.mean(self.model.model_entropy(aux_target))
+                    reward -= entropy
+                    self.return_ +=reward
+
+                    # self.reset()
         obs, done = self.get_obs()
         return obs, reward, done, False, info
     def render(self, mode='human'):

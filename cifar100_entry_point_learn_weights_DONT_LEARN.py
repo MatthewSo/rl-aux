@@ -29,13 +29,13 @@ LEARN_WEIGHTS = False
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
-    agent_type="PPO",
+    agent_type="PPO_RESET",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
     learn_weights=LEARN_WEIGHTS,
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
-    dataset="CIFAR100-20v2",
+    dataset="CIFAR100-20",
 )
 
 change_log_location(SAVE_PATH)
@@ -65,7 +65,7 @@ save_all_parameters(
 
 log_print("Torch CUDA available:", torch.cuda.is_available())
 log_print("Torch CUDA device count:", torch.cuda.device_count())
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 log_print("Using device:", device)
 
