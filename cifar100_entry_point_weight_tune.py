@@ -154,7 +154,7 @@ weight_tuning_ppo_agent = get_weight_training_ppo_agent(weight_tuning_env,
                                                          batch_size=BATCH_SIZE,
                                                          learning_rate=PPO_LEARNING_RATE,
                                                          ent_coef=0.01,
-                                                         n_steps=79,
+                                                         n_steps=BATCH_SIZE,
                                                          n_epochs=10)
 
 train_auxilary_agent(
@@ -168,5 +168,5 @@ train_auxilary_agent(
     save_path=SAVE_PATH,
     model_train_ratio=TRAIN_RATIO,
     primary_dimension=PRIMARY_DIMENSION,
-    skip_rl=False
+    skip_rl=True
 )
