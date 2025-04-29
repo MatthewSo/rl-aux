@@ -86,9 +86,9 @@ class WeightTuningEnv(gym.Env):
         self.current_batch_aux_labels.append(torch.as_tensor(aux_task_action, dtype=torch.long))
 
         self.current_batch_index += 1
-        if self.verbose:
-            print("First 30 pixels of image:", image.flatten()[:30])
-            print(self.obs_hash({"image": image}))
+        # if self.verbose:
+        #     print("First 30 pixels of image:", image.flatten()[:30])
+        #     print(self.obs_hash({"image": image}))
         return {"image": image}, done
 
     def obs_hash(self, obs_dict):
@@ -119,6 +119,9 @@ class WeightTuningEnv(gym.Env):
         reward = 0
         info = {}
         self.count += 1
+        if self.verbose:
+            log_print("Step", self.count)
+            log_print("Action", action)
         self.current_batch_weights.append(torch.tensor(action, dtype=torch.float32))
         if len(self.current_batch_weights) >= self.batch_size:
             self.num_batches += 1
