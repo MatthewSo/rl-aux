@@ -68,6 +68,7 @@ class WeightTuningEnv(gym.Env):
         if self.current_batch_index >= self.batch_size:
             self.current_batch_index = 0
             self.current_batch_weights = []
+            self.current_batch_aux_labels = []
             try:
                 self.current_batch, self.current_labels = next(self.data_iter)
                 done = False
