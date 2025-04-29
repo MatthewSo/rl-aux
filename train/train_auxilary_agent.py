@@ -6,12 +6,20 @@ from train.model.performance import EpochPerformance
 from utils.log import log_print
 from utils.vars import softmax
 
-def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio, skip_rl):
+def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio, skip_rl, rl_pretraining_epochs=0):
     epoch_performances = []
     epoch_performance = None
     num_test_batches = len(test_loader)
 
     best_training_performance = 0
+
+    # Pretrain the RL model
+    for index in range(rl_pretraining_epochs):
+        primary_model.train()
+        log_print("Starting RL Pretraining Epoch: ", index)
+        env.train_rl_network_with_rl(rl_model, ratio=model_train_ratio)
+
+        env.save(rl_model)
 
     for index in range(total_epochs):
         primary_model.train()

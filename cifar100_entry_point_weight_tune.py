@@ -34,7 +34,7 @@ TRAIN_RATIO = 1
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
-    agent_type="WEIGHT_TUNING_PPO",
+    agent_type="WEIGHT_TUNING_PPO_50Pretraining",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
@@ -69,7 +69,7 @@ save_all_parameters(
 
 log_print("Torch CUDA available:", torch.cuda.is_available())
 log_print("Torch CUDA device count:", torch.cuda.device_count())
-device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
 log_print("Using device:", device)
 
@@ -168,5 +168,6 @@ train_auxilary_agent(
     save_path=SAVE_PATH,
     model_train_ratio=TRAIN_RATIO,
     primary_dimension=PRIMARY_DIMENSION,
-    skip_rl=False
+    skip_rl=False,
+    rl_pretraining_epochs=50,
 )
