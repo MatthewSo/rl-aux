@@ -36,6 +36,7 @@ class WeightTuningEnv(gym.Env):
         self.current_batch = None
         self.current_batch_index = 0
         self.current_batch_weights = []
+        self.current_batch_aux_labels = []
         sampler = RandomSampler(train_dataset, replacement=True, num_samples=sys.maxsize)
         self.reward_sampler = iter(DataLoader(train_dataset, batch_size=256, sampler=sampler))
         image_obs = spaces.Box(low=0, high=1, shape=image_shape, dtype=np.float32)
@@ -57,19 +58,25 @@ class WeightTuningEnv(gym.Env):
         done = False
         if len(self.current_batch) < self.batch_size:
             image = self.current_batch.cpu()[self.current_batch_index]
+            aux_task_action = self.labeler.predict({"image": image})
+            self.current_batch_aux_labels.append(aux_task_action)
             return {"image": image}, True
         if self.current_batch_index >= self.batch_size:
             self.current_batch_index = 0
             self.current_batch_weights = []
             try:
-                self.current_batch, _ = next(self.data_iter)
+                self.current_batch, self.current_labels = next(self.data_iter)
                 done = False
             except StopIteration:
                 self.data_iter = iter(self.train_loader)
-                self.current_batch, _ = next(self.data_iter)
+                self.current_batch, self.current_labels = next(self.data_iter)
                 done = True
         image = self.current_batch.cpu()[self.current_batch_index]
         image = image.numpy().astype(np.float32)
+
+        aux_task_action = self.labeler.predict({"image": image})
+        self.current_batch_aux_labels.append(aux_task_action)
+
         self.current_batch_index += 1
         return {"image": image}, done
     def reset(self, seed=None):
@@ -85,8 +92,9 @@ class WeightTuningEnv(gym.Env):
             self.scheduler.load_state_dict(self.scheduler_reload_state)
         self.reset_data_loader(self.seed)
         self.data_iter = iter(self.train_loader)
-        self.current_batch, _ = next(self.data_iter)
+        self.current_batch, self.current_labels = next(self.data_iter)
         self.current_batch_weights = []
+        self.current_batch_aux_labels = []
         obs, done = self.get_obs()
         return obs, {}
     def step(self, action, give_reward=True):
@@ -98,20 +106,20 @@ class WeightTuningEnv(gym.Env):
         if len(self.current_batch_weights) >= self.batch_size:
             self.num_batches += 1
             weights = torch.stack(self.current_batch_weights, dim=0).to(self.device)
+            aux_labels = torch.stack(self.current_batch_aux_labels, dim=0).to(self.device)
             self.current_batch_weights = []
-            inputs = self.current_batch.to(self.device)
-            with torch.no_grad():
-                labels = self.labeler(inputs)[0].argmax(dim=1)
+
+            inputs, labels = self.current_batch.to(self.device),self.current_labels.to(self.device)
+            mask = create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim).to(self.device)
+            aux_target = mask_softmax(torch.tensor(aux_labels).to(self.device), mask, dim=-1)
+
             self.optimizer.zero_grad()
             primary_output, aux_output = self.model(inputs)
-            mask = create_mask_from_labels(labels, num_classes=self.primary_dim,
-                                           num_features=self.aux_dim).to(self.device)
-            aux_target = mask_softmax(labels, mask, dim=-1)
-            loss_class = torch.mean(self.model.model_fit(primary_output, labels, pri=True,
-                                                         num_output=self.primary_dim, device=self.device))
+            loss_class = self.criterion(primary_output, labels)
+
+            loss_aux_individual = self.model.model_fit(aux_output, aux_target, device=self.device, pri=False, num_output=self.aux_dim)
             weight_factors = torch.pow(2.0, 10.0 * weights - 5.0)
-            loss_aux_individual = self.model.model_fit(aux_output, aux_target, pri=False,
-                                                       num_output=self.aux_dim, device=self.device)
+
             loss_aux = torch.mean(loss_aux_individual * weight_factors)
             loss = loss_class + loss_aux
             loss.backward()
