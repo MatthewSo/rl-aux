@@ -1,8 +1,10 @@
+import hashlib
 import os
 import gymnasium as gym
 import torch
 import numpy as np
 from gymnasium import spaces
+from mkl import verbose
 from torch.utils.data import DataLoader, RandomSampler, SubsetRandomSampler
 import copy
 import random
@@ -84,7 +86,16 @@ class WeightTuningEnv(gym.Env):
         self.current_batch_aux_labels.append(torch.as_tensor(aux_task_action, dtype=torch.long))
 
         self.current_batch_index += 1
+        if self.verbose:
+            print(self.obs_hash({"image": image}))
         return {"image": image}, done
+
+    def obs_hash(self, obs_dict):
+        image = obs_dict["image"]
+        image_bytes = image.tobytes()
+        hash_str = hashlib.md5(image_bytes).hexdigest()
+        return hash_str
+
     def reset(self, seed=None):
         self.return_ = 0
         self.count = 0
@@ -135,7 +146,7 @@ class WeightTuningEnv(gym.Env):
             loss_class = self.criterion(primary_output, labels)
 
             loss_aux_individual = self.model.model_fit(aux_output, aux_target, device=self.device, pri=False, num_output=self.aux_dim)
-            weight_factors = torch.pow(2.0, 10.0 * weights - 5.0)
+            weight_factors = torch.pow(2.0, 9.0 * weights - 4.5)
 
             loss_aux = torch.mean(loss_aux_individual * weight_factors)
 
