@@ -48,7 +48,7 @@ class WeightTuningEnv(gym.Env):
         self.observation_space = spaces.Dict({
             "image": image_obs,
         })
-        self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
+        self.action_space = spaces.Box(low=0.0, high=32.0, shape=(1,), dtype=np.float32)
         self.model = copy.deepcopy(self.cannonical_model).to(self.device)
         self.count = 0
         self.num_batches = 0
