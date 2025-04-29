@@ -33,9 +33,14 @@ class WeightNet(nn.Module):
         super().__init__()
         self.fc = nn.Linear(feature_dim, 1)
 
+    # def forward(self, x):
+    #     x = x.reshape(-1, self.fc.in_features)
+    #     return torch.sigmoid(self.fc(x)).squeeze(-1)
+
     def forward(self, x):
-        x = x.reshape(-1, self.fc.in_features)
-        return torch.sigmoid(self.fc(x)).squeeze(-1)
+        x = x.view(-1, self.fc.in_features)
+        x = self.fc(x)
+        return x.squeeze(-1)
 
 class ValueNet(nn.Module):
     def __init__(self, feature_dim):

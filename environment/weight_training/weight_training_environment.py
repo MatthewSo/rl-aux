@@ -122,7 +122,9 @@ class WeightTuningEnv(gym.Env):
         if self.verbose:
             log_print("Step", self.count)
             log_print("Action", action)
-        self.current_batch_weights.append(torch.tensor(action, dtype=torch.float32))
+
+        action_clamped = torch.clamp(action, min=0.0, max=32.0)
+        self.current_batch_weights.append(torch.tensor(action_clamped, dtype=torch.float32))
         if len(self.current_batch_weights) >= self.batch_size:
             self.num_batches += 1
 
@@ -150,7 +152,8 @@ class WeightTuningEnv(gym.Env):
             loss_class = self.criterion(primary_output, labels)
 
             loss_aux_individual = self.model.model_fit(aux_output, aux_target, device=self.device, pri=False, num_output=self.aux_dim)
-            weight_factors = torch.pow(2.0, 9.0 * weights - 4.5)
+            #weight_factors = torch.pow(2.0, 9.0 * weights - 4.5)
+            weight_factors = weights
 
             loss_aux = torch.mean(loss_aux_individual * weight_factors)
 
