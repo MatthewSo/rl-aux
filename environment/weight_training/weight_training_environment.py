@@ -105,6 +105,16 @@ class WeightTuningEnv(gym.Env):
         self.current_batch_weights.append(torch.tensor(weight, dtype=torch.float32))
         if len(self.current_batch_weights) >= self.batch_size:
             self.num_batches += 1
+
+            self.current_batch_aux_labels = [
+                torch.from_numpy(x) if isinstance(x, np.ndarray) else x
+                for x in self.current_batch_aux_labels
+            ]
+            self.current_batch_weights = [
+                torch.from_numpy(x) if isinstance(x, np.ndarray) else x
+                for x in self.current_batch_weights
+            ]
+
             weights = torch.stack(self.current_batch_weights, dim=0).to(self.device)
             aux_labels = torch.stack(self.current_batch_aux_labels, dim=0).to(self.device)
             self.current_batch_weights = []
