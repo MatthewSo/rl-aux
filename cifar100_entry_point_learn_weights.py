@@ -23,13 +23,13 @@ PPO_LEARNING_RATE = 0.0003
 SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0
-TRAIN_RATIO = 2
+TRAIN_RATIO = 1
 LEARN_WEIGHTS = True
 
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
-    agent_type="PPO",
+    agent_type="PPO_RESET",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
@@ -65,7 +65,7 @@ save_all_parameters(
 
 log_print("Torch CUDA available:", torch.cuda.is_available())
 log_print("Torch CUDA device count:", torch.cuda.device_count())
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 
 log_print("Using device:", device)
 
