@@ -77,7 +77,11 @@ class WeightTuningEnv(gym.Env):
         image = image.numpy().astype(np.float32)
 
         action = self.labeler.predict({"image": image})
+        print("Action:", action)
         aux_task_action, weight_task_action = action
+        print("Auxiliary task action:", aux_task_action)
+        print("Weight task action:", weight_task_action)
+        input("Press Enter to continue...")
         self.current_batch_aux_labels.append(torch.as_tensor(aux_task_action, dtype=torch.long))
 
         self.current_batch_index += 1
