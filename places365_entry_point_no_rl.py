@@ -72,13 +72,13 @@ log_print("Using device:", device)
 # ---------
 
 places365_train_set = Places365(
-    root="/data/places365",
+    root="./data/places365",
     train=True,
     transform=places365_trans_train,
     download=True
 )
 places365_test_set = Places365(
-    root="/data/places365",
+    root="./data/places365",
     train=False,
     transform=places365_trans_test,
     download=True,
