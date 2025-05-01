@@ -138,3 +138,16 @@ class CoarseLabelCIFAR100(Dataset):
         image, labels = self.cifar.__getitem__(index)
         coarse = labels[2]
         return image, int(coarse)
+
+class FineLabelCIFAR100(Dataset):
+    def __init__(self, cifar):
+        super().__init__()
+        self.cifar = cifar
+
+    def __len__(self):
+        return len(self.cifar)
+
+    def __getitem__(self, index):
+        image, labels = self.cifar.__getitem__(index)
+        fine = labels[3]
+        return image, int(fine)
