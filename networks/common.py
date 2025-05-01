@@ -6,9 +6,9 @@ import numpy as np
 from networks.primary.vgg import VGG16
 
 class CustomFeatureExtractor(BaseFeaturesExtractor):
-    def __init__(self, observation_space, features_dim):
+    def __init__(self, observation_space, features_dim, input_shape=(3, 32, 32)):
         super(CustomFeatureExtractor, self).__init__(observation_space, features_dim)
-        self.net = VGG16(primary_task_output=features_dim, auxiliary_task_output=features_dim)
+        self.net = VGG16(primary_task_output=features_dim, auxiliary_task_output=features_dim, input_shape=input_shape)
 
     def forward(self, observations):
         observation=observations['image']

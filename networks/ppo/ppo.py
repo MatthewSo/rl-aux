@@ -8,11 +8,11 @@ from stable_baselines3 import PPO
 from networks.common import CustomFeatureExtractor, ActionNet, ValueNet
 
 
-def get_ppo_agent( env, feature_dim, auxiliary_dim, weight_bins, device, batch_size, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10):
+def get_ppo_agent( env, feature_dim, auxiliary_dim, weight_bins, device, batch_size, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10, input_shape=(3, 32, 32)):
     # Set up the RL PPO agent (of course other agent types may make sense too)
     policy_kwargs = {
         "features_extractor_class": CustomFeatureExtractor, #CustomFeatureExtractor,
-        "features_extractor_kwargs": {"features_dim": feature_dim},  # Dimensionality of the output features
+        "features_extractor_kwargs": {"features_dim": feature_dim, input_shape: input_shape},
         "net_arch":[],
     }
 
