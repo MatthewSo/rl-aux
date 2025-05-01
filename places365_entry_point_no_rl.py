@@ -94,7 +94,8 @@ test_loader = torch.utils.data.DataLoader(
 
 primary_model = VGG16(
     primary_task_output=PRIMARY_DIMENSION,
-    auxiliary_task_output=AUX_DIMENSION
+    auxiliary_task_output=AUX_DIMENSION,
+    input_shape=(3, 224, 224),
 ).to(device)
 criterion = nn.CrossEntropyLoss()
 #optimizer_callback = lambda x: torch.optim.Adam(x.parameters(), lr=PRIMARY_LEARNING_RATE)
