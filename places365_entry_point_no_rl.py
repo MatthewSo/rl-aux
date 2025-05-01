@@ -13,7 +13,7 @@ from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
 
-BATCH_SIZE = 50
+BATCH_SIZE = 25
 AUX_DIMENSION = 1825
 PRIMARY_DIMENSION = 365
 OBSERVATION_FEATURE_DIMENSION = 256
