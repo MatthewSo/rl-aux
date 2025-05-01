@@ -6,7 +6,7 @@ from stable_baselines3 import PPO
 from torch import nn
 
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
-from datasets.transforms import trans_train, trans_test
+from datasets.transforms import cifar_trans_train, cifar_trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
 from environment.weight_training.weight_training_environment import WeightTuningEnv
 from networks.ppo.ppo import get_ppo_agent
@@ -75,8 +75,8 @@ log_print("Using device:", device)
 
 # ---------
 
-cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=True)
-cifar100_test_set = CIFAR100(root='dataset', train=False, transform=trans_test, download=True)
+cifar100_train_set = CIFAR100(root='dataset', train=True, transform=cifar_trans_train, download=True)
+cifar100_test_set = CIFAR100(root='dataset', train=False, transform=cifar_trans_test, download=True)
 
 course_cifar_train_set = CoarseLabelCIFAR100(cifar100_train_set)
 course_cifar_test_set = CoarseLabelCIFAR100(cifar100_test_set)
