@@ -103,7 +103,7 @@ optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNI
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 
 env = AuxTaskEnv(
-    train_dataset=train_loader,
+    train_dataset=places365_train_set,
     device=device,
     model=primary_model,
     criterion=criterion,
