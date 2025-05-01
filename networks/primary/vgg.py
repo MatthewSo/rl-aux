@@ -3,7 +3,7 @@ import torch.nn as nn
 
 # Define VGG net
 class VGG16(nn.Module):
-    def __init__(self, primary_task_output, auxiliary_task_output):
+    def __init__(self, primary_task_output, auxiliary_task_output, input_shape=(3,32,32)):
         super(VGG16, self).__init__()
         """
             multi-task network:
@@ -14,6 +14,11 @@ class VGG16(nn.Module):
 
         filter = [64, 128, 256, 512, 512]
 
+        with torch.no_grad():
+            dummy = torch.zeros(1, *input_shape)
+            dummy = self._forward_conv(dummy)
+            flat_dim = dummy.view(1, -1).size(1)
+
         # define convolution block in VGG-16
         self.block1 = self.conv_layer(3, filter[0], 1)
         self.block2 = self.conv_layer(filter[0], filter[1], 2)
@@ -23,7 +28,7 @@ class VGG16(nn.Module):
 
         # primary task prediction
         self.classifier1 = nn.Sequential(
-            nn.Linear(filter[-1], filter[-1]),
+            nn.Linear(flat_dim, filter[-1]),
             nn.ReLU(inplace=True),
             nn.Linear(filter[-1], primary_task_output),
             nn.Softmax(dim=1),
@@ -31,7 +36,7 @@ class VGG16(nn.Module):
 
         # auxiliary task prediction
         self.classifier2 = nn.Sequential(
-            nn.Linear(filter[-1], filter[-1]),
+            nn.Linear(flat_dim, filter[-1]),
             nn.ReLU(inplace=True),
             nn.Linear(filter[-1], auxiliary_task_output),
             nn.Softmax(dim=1),
