@@ -227,7 +227,7 @@ class AuxTaskEnv(gym.Env):
             primary_output, aux_output = self.model(inputs)
 
             mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
-            B, C = mask.shape                      
+            B, C = mask.shape
             device = mask.device
 
             x = F.one_hot(aux_labels, num_classes=C).float().to(device)
