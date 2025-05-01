@@ -227,13 +227,11 @@ class AuxTaskEnv(gym.Env):
             primary_output, aux_output = self.model(inputs)
 
             mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
-            B, C = mask.shape                       # C = 1825
+            B, C = mask.shape                      
             device = mask.device
 
-            # 1. one-hot encode → (B, C)
             x = F.one_hot(aux_labels, num_classes=C).float().to(device)
 
-            # 2. masked soft-max over the class dimension
             aux_target = mask_softmax(x, mask, dim=1)
             # aux_labels = aux_labels.to(self.device).unsqueeze(1).float()
             # aux_target=mask_softmax(torch.tensor(aux_labels).to(self.device),mask,dim=1)
