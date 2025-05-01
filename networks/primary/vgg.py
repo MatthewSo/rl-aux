@@ -13,18 +13,17 @@ class VGG16(nn.Module):
         self._aux_out = auxiliary_task_output
 
         filter = [64, 128, 256, 512, 512]
-
-        with torch.no_grad():
-            dummy = torch.zeros(1, *input_shape)
-            dummy = self._forward_conv(dummy)
-            flat_dim = dummy.view(1, -1).size(1)
-
         # define convolution block in VGG-16
         self.block1 = self.conv_layer(3, filter[0], 1)
         self.block2 = self.conv_layer(filter[0], filter[1], 2)
         self.block3 = self.conv_layer(filter[1], filter[2], 3)
         self.block4 = self.conv_layer(filter[2], filter[3], 4)
         self.block5 = self.conv_layer(filter[3], filter[4], 5)
+
+        with torch.no_grad():
+            dummy = torch.zeros(1, *input_shape)
+            dummy = self._forward_conv(dummy)
+            flat_dim = dummy.view(1, -1).size(1)
 
         # primary task prediction
         self.classifier1 = nn.Sequential(
