@@ -15,7 +15,7 @@ from train.model.performance import EpochPerformance
 from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name
 
-AUX_WEIGHT = 0.5
+AUX_WEIGHT = 0.25
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 save_path = create_path_name(
