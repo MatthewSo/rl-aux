@@ -80,6 +80,14 @@ class VGG16(nn.Module):
             )
         return conv_block
 
+    def _forward_conv(self, x):
+        x = self.block1(x)
+        x = self.block2(x)
+        x = self.block3(x)
+        x = self.block4(x)
+        x = self.block5(x)
+        return x
+
     def forward(self, x):
         g_block1 = self.block1(x)
         g_block2 = self.block2(g_block1)
