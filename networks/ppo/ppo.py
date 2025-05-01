@@ -12,7 +12,7 @@ def get_ppo_agent( env, feature_dim, auxiliary_dim, weight_bins, device, batch_s
     # Set up the RL PPO agent (of course other agent types may make sense too)
     policy_kwargs = {
         "features_extractor_class": CustomFeatureExtractor, #CustomFeatureExtractor,
-        "features_extractor_kwargs": {"features_dim": feature_dim, input_shape: input_shape},
+        "features_extractor_kwargs": {"features_dim": feature_dim, "input_shape": input_shape},
         "net_arch":[],
     }
 
