@@ -1,4 +1,5 @@
 import os
+import torch.nn.functional as F
 
 import gymnasium as gym
 import torch
@@ -226,9 +227,16 @@ class AuxTaskEnv(gym.Env):
             primary_output, aux_output = self.model(inputs)
 
             mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
+            B, C = mask.shape                       # C = 1825
+            device = mask.device
 
-            aux_labels = aux_labels.to(self.device).unsqueeze(1).float()
-            aux_target=mask_softmax(torch.tensor(aux_labels).to(self.device),mask,dim=1)
+            # 1. one-hot encode → (B, C)
+            x = F.one_hot(aux_labels, num_classes=C).float().to(device)
+
+            # 2. masked soft-max over the class dimension
+            aux_target = mask_softmax(x, mask, dim=1)
+            # aux_labels = aux_labels.to(self.device).unsqueeze(1).float()
+            # aux_target=mask_softmax(torch.tensor(aux_labels).to(self.device),mask,dim=1)
             #aux_target=mask_softmax(torch.tensor(aux_labels).to(self.device),mask,dim=-1)
 
             loss_class = torch.mean(self.model.model_fit(primary_output, labels, pri=True,num_output=self.primary_dim, device=self.device))
