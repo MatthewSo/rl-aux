@@ -4,7 +4,6 @@ from tabnanny import verbose
 import torch
 from torch import nn
 
-from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.imagenet import ImageNet
 from datasets.transforms import cifar_trans_train, cifar_trans_test, imagenet_trans_train, imagenet_trans_val
 from environment.learn_weight_aux_task import AuxTaskEnv
@@ -54,7 +53,7 @@ save_all_parameters(
     learn_weights=LEARN_WEIGHTS,
     train_ratio=TRAIN_RATIO,
     save_path=SAVE_PATH,
-    dataset="CIFAR100-20",
+    dataset="IMAGENET",
     model_name="VGG",
     agent_type="PPO",
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
