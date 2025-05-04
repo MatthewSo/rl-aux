@@ -1,26 +1,36 @@
 from collections import OrderedDict
-
+print("importing collections")
 from datasets.svhn import SVHN
+print("importing svhn")
 from datasets.transforms import svhn_trans_test, svhn_trans_train
-from legacy.create_dataset import *
-
+print("importing transforms")
 import numpy as np
+print("importing numpy")
 
 import torch
+print("importing torch")
 import torch.nn as nn
+print("importing nn")
 import torchvision.transforms as transforms
+print("importing transforms")
 import torch.optim as optim
+print("importing optim")
 import torch.nn.functional as F
+print("importing functional")
 import torch.utils.data.sampler as sampler
 
+print("importing sampler")
 from train.model.performance import EpochPerformance
+print("importing EpochPerformance")
 from utils.log import change_log_location, log_print
+print("importing log")
 from utils.path_name import create_path_name
+print("importing path_name")
 
 AUX_WEIGHT = 1
 device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
-print("Starting")
+print("Starting MAXL SVHN")
 
 save_path = create_path_name(
     agent_type="MAXL",
