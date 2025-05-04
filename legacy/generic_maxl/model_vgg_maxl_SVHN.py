@@ -318,6 +318,7 @@ trans_test = transforms.Compose([
 
 
 
+batch_size = 100
 dataloader_train = torch.utils.data.DataLoader(
     dataset=train_set,
     batch_size=batch_size,
@@ -329,7 +330,6 @@ dataloader_test = torch.utils.data.DataLoader(
     shuffle=True
 )
 
-batch_size = 100
 kwargs = {'num_workers': 1, 'pin_memory': True}
 
 # define label-generation model,
