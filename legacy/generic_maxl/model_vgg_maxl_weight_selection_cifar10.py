@@ -1,32 +1,62 @@
+import pickle
 from collections import OrderedDict
 
-from legacy.create_dataset import *
+from datasets.cifar10 import CIFAR10
 
+print("importing collections")
+from datasets.transforms import cifar_trans_test, cifar_trans_train
+
+print("importing transforms")
 import numpy as np
+print("importing numpy")
 
 import torch
+print("importing torch")
 import torch.nn as nn
+print("importing nn")
 import torchvision.transforms as transforms
+print("importing transforms")
 import torch.optim as optim
+print("importing optim")
 import torch.nn.functional as F
+print("importing functional")
 import torch.utils.data.sampler as sampler
 
+print("importing sampler")
 from train.model.performance import EpochPerformance
+print("importing EpochPerformance")
 from utils.log import change_log_location, log_print
+print("importing log")
 from utils.path_name import create_path_name
+print("importing path_name")
 
-AUX_WEIGHT = 1
-device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
+AUX_WEIGHT = 0
 
 save_path = create_path_name(
     agent_type="MAXL",
     primary_model_type="VGG",
-    train_ratio=0,
+    train_ratio=1,
     aux_weight=AUX_WEIGHT,
     observation_feature_dimensions=0,
-    dataset="CIFAR100-20",
-    learn_weights=False,
+    dataset="CIFAR10",
+    learn_weights=True,
 )
+device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+
+train_set = CIFAR10(
+    root="./data/cifar10",
+    train=True,
+    transform=cifar_trans_train
+)
+test_set = CIFAR10(
+    root="./data/cifar10",
+    train=False,
+    transform=cifar_trans_test
+)
+
+PRIMARY_CLASS = 10
+AUXILIARY_CLASS = 50
+
 change_log_location(save_path)
 epoch_performances=[]
 
@@ -52,6 +82,14 @@ class LabelGenerator(nn.Module):
             nn.Linear(filter[-1], filter[-1]),
             nn.ReLU(inplace=True),
             nn.Linear(filter[-1], int(np.sum(self.class_nb))),
+        )
+
+        # another head to output 0-1 value s.t. shape needs to be (1, batchsize)
+        self.weight_head = nn.Sequential(
+            nn.Linear(filter[-1], filter[-1]),
+            nn.ReLU(inplace=True),
+            nn.Linear(filter[-1], 1),
+            nn.Sigmoid()
         )
 
         # apply weight initialisation
@@ -114,7 +152,9 @@ class LabelGenerator(nn.Module):
         predict = self.classifier(g_block5.view(g_block5.size(0), -1))
         label_pred = self.mask_softmax(predict, mask, dim=1)
 
-        return label_pred
+        weight = self.weight_head(g_block5.view(g_block5.size(0), -1))
+
+        return label_pred, weight
 
 
 class VGG16(nn.Module):
@@ -289,34 +329,31 @@ trans_test = transforms.Compose([
 
 ])
 
-# load CIFAR-100 dataset with batch-size 100
-# set keyword download=True at the first time to download the dataset
-cifar100_train_set = CIFAR100(root='dataset', train=True, transform=trans_train, download=False)
-cifar100_test_set = CIFAR100(root='dataset', train=False, transform=trans_test, download=False)
-
 batch_size = 100
-kwargs = {'num_workers': 1, 'pin_memory': True}
-cifar100_train_loader = torch.utils.data.DataLoader(
-    dataset=cifar100_train_set,
+dataloader_train = torch.utils.data.DataLoader(
+    dataset=train_set,
     batch_size=batch_size,
-    shuffle=True)
+    shuffle=True
+)
+dataloader_test = torch.utils.data.DataLoader(
+    dataset=test_set,
+    batch_size=batch_size,
+    shuffle=True
+)
 
-cifar100_test_loader = torch.utils.data.DataLoader(
-    dataset=cifar100_test_set,
-    batch_size=batch_size,
-    shuffle=True)
+kwargs = {'num_workers': 1, 'pin_memory': True}
 
 # define label-generation model,
 # and optimiser with learning rate 1e-3, drop half for every 50 epochs, weight_decay=5e-4,
-psi = [5]*20  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
+psi = [5]*PRIMARY_CLASS  # for each primary class split into 5 auxiliary classes, with total 100 auxiliary classes
 LabelGenerator = LabelGenerator(psi=psi).to(device)
 gen_optimizer = optim.SGD(LabelGenerator.parameters(), lr=1e-3, weight_decay=5e-4)
 gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=50, gamma=0.5)
 
 # define parameters
 total_epoch = 200
-train_batch = len(cifar100_train_loader)
-test_batch = len(cifar100_test_loader)
+train_batch = len(dataloader_train)
+test_batch = len(dataloader_test)
 
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 VGG16_model = VGG16(psi=psi).to(device)
@@ -336,21 +373,21 @@ for index in range(total_epoch):
 
     # evaluate training data (training-step, update on theta_1)
     VGG16_model.train()
-    cifar100_train_dataset = iter(cifar100_train_loader)
+    cifar100_train_dataset = iter(dataloader_train)
     for i in range(train_batch):
         train_data, train_label = next(cifar100_train_dataset)
         train_label = train_label.type(torch.LongTensor)
         train_data, train_label = train_data.to(device), train_label.to(device)
         train_pred1, train_pred2 = VGG16_model(train_data)
-        train_pred3 = LabelGenerator(train_data, train_label[:, 2])  # generate auxiliary labels
+        train_pred3, aux_weight = LabelGenerator(train_data, train_label)  # generate auxiliary labels
 
         # reset optimizers with zero gradient
         optimizer.zero_grad()
         gen_optimizer.zero_grad()
 
         # choose level 2/3 hierarchy, 20-class (gt) / 100-class classification (generated by labelgeneartor)
-        train_loss1 = VGG16_model.model_fit(train_pred1, train_label[:, 2], pri=True, num_output=20)
-        train_loss2 = VGG16_model.model_fit(train_pred2, train_pred3, pri=False, num_output=100)
+        train_loss1 = VGG16_model.model_fit(train_pred1, train_label, pri=True, num_output=PRIMARY_CLASS)
+        train_loss2 = VGG16_model.model_fit(train_pred2, train_pred3, pri=False, num_output=AUXILIARY_CLASS)
 
         # compute cosine similarity between gradients from primary and auxiliary loss
         grads1 = torch.autograd.grad(torch.mean(train_loss1), VGG16_model.parameters(), retain_graph=True, allow_unused=True)
@@ -362,13 +399,16 @@ for index in range(total_epoch):
             cos_mean += torch.mean(F.cosine_similarity(grads1_, grads2_, dim=-1)) / (len(grads1) - 8)
         # cosine similarity evaluation ends here
 
-        train_loss = torch.mean(train_loss1) + AUX_WEIGHT * torch.mean(train_loss2)
+        weight_factors = torch.pow(2.0, 10.0 * aux_weight - 5.0)
+        aux_loss = torch.mean(train_loss2 * weight_factors)
+        train_loss = torch.mean(train_loss1) + aux_loss
+
         train_loss.backward()
 
         optimizer.step()
 
         train_predict_label1 = train_pred1.data.max(1)[1]
-        train_acc1 = train_predict_label1.eq(train_label[:, 2]).sum().item() / batch_size
+        train_acc1 = train_predict_label1.eq(train_label).sum().item() / batch_size
 
         cost[0] = torch.mean(train_loss1).item()
         cost[1] = train_acc1
@@ -377,30 +417,33 @@ for index in range(total_epoch):
         avg_cost[index][0:3] += cost[0:3] / train_batch
 
     # evaluating training data (meta-training step, update on theta_2)
-    cifar100_train_dataset = iter(cifar100_train_loader)
+    cifar100_train_dataset = iter(dataloader_train)
     for i in range(train_batch):
         train_data, train_label = next(cifar100_train_dataset)
         train_label = train_label.type(torch.LongTensor)
         train_data, train_label = train_data.to(device), train_label.to(device)
 
         train_pred1, train_pred2 = VGG16_model(train_data)
-        train_pred3 = LabelGenerator(train_data, train_label[:, 2])
+        train_pred3, aux_weight = LabelGenerator(train_data, train_label)
 
         # reset optimizer with zero gradient
         optimizer.zero_grad()
         gen_optimizer.zero_grad()
 
         # choose level 2/3 hierarchy, 20-class/100-class classification
-        train_loss1 = VGG16_model.model_fit(train_pred1, train_label[:, 2], pri=True, num_output=20)
-        train_loss2 = VGG16_model.model_fit(train_pred2, train_pred3, pri=False, num_output=100)
+        train_loss1 = VGG16_model.model_fit(train_pred1, train_label, pri=True, num_output=PRIMARY_CLASS)
+        train_loss2 = VGG16_model.model_fit(train_pred2, train_pred3, pri=False, num_output=AUXILIARY_CLASS)
         train_loss3 = VGG16_model.model_entropy(train_pred3)
 
         # multi-task loss
-        train_loss = torch.mean(train_loss1) + torch.mean(train_loss2)
+        # element-wise multiplication between auxiliary loss and auxiliary weight
+        weight_factors = torch.pow(2.0, 10.0 * aux_weight - 5.0)
+        aux_loss = torch.mean(train_loss2 * weight_factors)
+        train_loss = torch.mean(train_loss1) + aux_loss
 
         # current accuracy on primary task
         train_predict_label1 = train_pred1.data.max(1)[1]
-        train_acc1 = train_predict_label1.eq(train_label[:, 2]).sum().item() / batch_size
+        train_acc1 = train_predict_label1.eq(train_label).sum().item() / batch_size
         cost[0] = torch.mean(train_loss1).item()
         cost[1] = train_acc1
 
@@ -416,14 +459,14 @@ for index in range(total_epoch):
 
         # compute primary loss with the updated thetat_1^+
         train_pred1, train_pred2 = VGG16_model.forward(train_data, fast_weights)
-        train_loss1 = VGG16_model.model_fit(train_pred1, train_label[:, 2], pri=True, num_output=20)
+        train_loss1 = VGG16_model.model_fit(train_pred1, train_label, pri=True, num_output=PRIMARY_CLASS)
 
         # update theta_2 with primary loss + entropy loss
         (torch.mean(train_loss1) + 0.2 * torch.mean(train_loss3)).backward()
         gen_optimizer.step()
 
         train_predict_label1 = train_pred1.data.max(1)[1]
-        train_acc1 = train_predict_label1.eq(train_label[:, 2]).sum().item() / batch_size
+        train_acc1 = train_predict_label1.eq(train_label).sum().item() / batch_size
 
         # accuracy on primary task after one update
         cost[2] = torch.mean(train_loss1).item()
@@ -433,17 +476,17 @@ for index in range(total_epoch):
     # evaluate on test data
     VGG16_model.eval()
     with torch.no_grad():
-        cifar100_test_dataset = iter(cifar100_test_loader)
+        cifar100_test_dataset = iter(dataloader_test)
         for i in range(test_batch):
             test_data, test_label = next(cifar100_test_dataset)
             test_label = test_label.type(torch.LongTensor)
             test_data, test_label = test_data.to(device), test_label.to(device)
             test_pred1, test_pred2 = VGG16_model(test_data)
 
-            test_loss1 = VGG16_model.model_fit(test_pred1, test_label[:, 2], pri=True, num_output=20)
+            test_loss1 = VGG16_model.model_fit(test_pred1, test_label, pri=True, num_output=PRIMARY_CLASS)
 
             test_predict_label1 = test_pred1.data.max(1)[1]
-            test_acc1 = test_predict_label1.eq(test_label[:, 2]).sum().item() / batch_size
+            test_acc1 = test_predict_label1.eq(test_label).sum().item() / batch_size
 
             cost[0] = torch.mean(test_loss1).item()
             cost[1] = test_acc1
