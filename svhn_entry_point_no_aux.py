@@ -13,8 +13,8 @@ from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
 
 BATCH_SIZE = 100
-AUX_DIMENSION = 100
-PRIMARY_DIMENSION = 20
+AUX_DIMENSION = 50
+PRIMARY_DIMENSION = 10
 OBSERVATION_FEATURE_DIMENSION = 256
 TOTAL_EPOCH = 200
 PRIMARY_LEARNING_RATE = 0.01
