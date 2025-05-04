@@ -73,11 +73,13 @@ log_print("Using device:", device)
 svhn_train_set = SVHN(
     root="./data/svhn",
     train=True,
-    transform=svhn_trans_train
+    transform=svhn_trans_train,
+    download=True
 )
 svhn_test_set = SVHN(
     root="./data/svhn",
     train=False,
+    download=True,
     transform=svhn_trans_test)
 
 svhn_dataloader_train = torch.utils.data.DataLoader(
