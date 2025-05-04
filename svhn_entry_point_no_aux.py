@@ -1,10 +1,12 @@
 import subprocess
+from tabnanny import verbose
 
 import torch
 from torch import nn
 
+from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.svhn import SVHN
-from datasets.transforms import svhn_trans_train, svhn_trans_test
+from datasets.transforms import cifar_trans_train, cifar_trans_test, svhn_trans_train, svhn_trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16
@@ -23,12 +25,12 @@ SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0
 TRAIN_RATIO = 1
-LEARN_WEIGHTS = True
+LEARN_WEIGHTS = False
 
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
 SAVE_PATH = create_path_name(
-    agent_type="PPO",
+    agent_type="SINGLETASK",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
@@ -54,7 +56,7 @@ save_all_parameters(
     save_path=SAVE_PATH,
     dataset="SVHN",
     model_name="VGG",
-    agent_type="PPO",
+    agent_type="SINGLETASK",
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
     aux_task_type="AuxTask",
     primary_task_type="VGG",
@@ -64,7 +66,7 @@ save_all_parameters(
 
 log_print("Torch CUDA available:", torch.cuda.is_available())
 log_print("Torch CUDA device count:", torch.cuda.device_count())
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 log_print("Using device:", device)
 
@@ -96,6 +98,8 @@ primary_model = VGG16(
     auxiliary_task_output=AUX_DIMENSION
 ).to(device)
 criterion = nn.CrossEntropyLoss()
+#optimizer_callback = lambda x: torch.optim.Adam(x.parameters(), lr=PRIMARY_LEARNING_RATE)
+#scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 
 optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNING_RATE)
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
@@ -136,11 +140,11 @@ train_auxilary_agent(
     rl_model=auxilary_task_agent,
     env=env,
     device=device,
-    test_loader=svhn_dataloader_test,
+    test_loader= svhn_dataloader_test,
     batch_size=BATCH_SIZE,
     total_epochs=TOTAL_EPOCH,
     save_path=SAVE_PATH,
     model_train_ratio=TRAIN_RATIO,
     primary_dimension=PRIMARY_DIMENSION,
-    skip_rl=False
+    skip_rl=True
 )
