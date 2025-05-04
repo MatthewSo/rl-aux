@@ -13,7 +13,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torch.utils.data.sampler as sampler
 
-from legacy.model_vgg_maxl import batch_size
 from train.model.performance import EpochPerformance
 from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name
