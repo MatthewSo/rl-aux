@@ -1,3 +1,4 @@
+import pickle
 from collections import OrderedDict
 print("importing collections")
 from datasets.svhn import SVHN
@@ -26,6 +27,8 @@ from utils.log import change_log_location, log_print
 print("importing log")
 from utils.path_name import create_path_name
 print("importing path_name")
+
+
 
 AUX_WEIGHT = 1
 device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
