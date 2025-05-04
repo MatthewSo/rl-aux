@@ -16,10 +16,10 @@ from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name
 
 AUX_WEIGHT = 1
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
 save_path = create_path_name(
-    agent_type="MAXL",
+    agent_type="MAXL_BACKUP",
     primary_model_type="VGG",
     train_ratio=0,
     aux_weight=AUX_WEIGHT,
