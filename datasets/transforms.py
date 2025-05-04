@@ -47,3 +47,16 @@ places365_trans_test = transforms.Compose([
     transforms.Normalize(mean=(0.485, 0.456, 0.406),
                          std=(0.229, 0.224, 0.225)),
 ])
+
+svhn_trans_train = transforms.Compose([
+    transforms.RandomCrop(32, padding=4),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=(0.4377, 0.4438, 0.4728),
+                         std=(0.1980, 0.2010, 0.1970)),
+])
+
+svhn_trans_test = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize(mean=(0.4377, 0.4438, 0.4728),
+                         std=(0.1980, 0.2010, 0.1970)),
+])
