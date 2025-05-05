@@ -1,6 +1,6 @@
 import torchvision.transforms as transforms
 
-
+# CIFAR Transforms
 cifar_trans_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
     transforms.RandomHorizontalFlip(),
@@ -14,6 +14,7 @@ cifar_trans_test = transforms.Compose([
 
 ])
 
+# ImageNet Transforms
 imagenet_trans_train = transforms.Compose([
     transforms.Resize(256),
     transforms.RandomResizedCrop(224),
@@ -31,6 +32,8 @@ imagenet_trans_val = transforms.Compose([
                          std=(0.229, 0.224, 0.225)),
 ])
 
+
+# Places365 Transforms
 places365_trans_train = transforms.Compose([
     transforms.Resize(256),
     transforms.RandomResizedCrop(224),
@@ -48,6 +51,7 @@ places365_trans_test = transforms.Compose([
                          std=(0.229, 0.224, 0.225)),
 ])
 
+# SVHN Transforms
 svhn_trans_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
     transforms.ToTensor(),

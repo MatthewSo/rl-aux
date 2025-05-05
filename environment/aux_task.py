@@ -15,7 +15,7 @@ from utils.masked_softmax import create_mask_from_labels, mask_softmax
 from utils.randomization import SeededSubsetRandomSampler
 from utils.vars import softmax
 
-
+# This is a DEPRECATED version of the environment.
 class AuxTaskEnv(gym.Env):
     """
     Auxiliary Task Environment for Reinforcement Learning

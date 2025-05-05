@@ -2,6 +2,9 @@ from torch.utils.data import Dataset
 from torchvision.datasets import Places365 as Places365Original
 
 class Places365(Dataset):
+    """
+    Places365 dataset wrapper.
+    """
     def __init__(self, root, train: bool = True,
                  transform=None, download: bool = False):
         super().__init__()

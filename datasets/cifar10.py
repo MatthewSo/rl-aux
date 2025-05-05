@@ -2,6 +2,9 @@ from torch.utils.data import Dataset
 from torchvision.datasets import CIFAR10 as CIFAR10Original
 
 class CIFAR10(Dataset):
+    """
+    CIFAR10 dataset wrapper.
+    """
     def __init__(self, root, train=True, transform=None, download=False):
         super().__init__()
         self.cifar10 = CIFAR10Original(

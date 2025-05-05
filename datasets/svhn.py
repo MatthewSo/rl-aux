@@ -2,6 +2,9 @@ from torch.utils.data import Dataset
 from torchvision.datasets import SVHN as SVHNOriginal
 
 class SVHN(Dataset):
+    """
+    SVHN dataset wrapper.
+    """
     def __init__(self, root, train: bool = True,
                  transform=None, download: bool = False):
         super().__init__()

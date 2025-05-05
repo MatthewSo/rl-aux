@@ -64,6 +64,7 @@ class AuxTaskEnv(gym.Env):
         # Define action and observation space
         image_obs = spaces.Box(low=0, high=1, shape=image_shape, dtype=np.float32)
 
+        # Future prove Dict-wrapped observation space
         self.observation_space = spaces.Dict({
             "image": image_obs,
         })
@@ -79,13 +80,16 @@ class AuxTaskEnv(gym.Env):
         self.num_batches = 0
         self.return_ = 0
 
+    # For weight selection conversion
     def weight_idx_to_float(self, idx, num_weight_bins):
         step = 1.0 / (num_weight_bins - 1)
         return idx * step
 
+    # Random seed selection for dataload randomization
     def randomize_seed(self):
         self.seed = random.randint(0, 2**32 - 1)
 
+    # Reset the data loader with a new seed
     def reset_data_loader(self,seed):
         # Define the indices for the dataset
         indices = list(range(len(self.train_dataset)))
@@ -98,6 +102,12 @@ class AuxTaskEnv(gym.Env):
         log_print("len",self.count)
 
     def save(self, agent, save_path=None):
+        """
+        Save the model and optimizer state to the specified path.
+        :param agent:
+        :param save_path:
+        :return:
+        """
         if save_path is None:
             save_path = self.save_path
 
@@ -118,6 +128,10 @@ class AuxTaskEnv(gym.Env):
 
     def \
             update(self):
+        """
+        Update the model and optimizer state. Called between episodes.
+        :return:
+        """
         log_print(self.scheduler.state_dict())
         log_print(self.optimizer.state_dict())
         self.scheduler.step()
@@ -128,6 +142,11 @@ class AuxTaskEnv(gym.Env):
 
 
     def evaluate(self, test_loader):
+        """
+        Evaluate the model on the training and test sets.
+        :param test_loader:
+        :return:
+        """
         # Evaluate the network on train and test sets
         if self.model is not None:
             train_accuracy = evaluate(self.model, self.train_loader,self.criterion, self.device)
@@ -137,10 +156,16 @@ class AuxTaskEnv(gym.Env):
             log_print("Test Accuracy",test_accuracy)
 
     def get_obs(self):
+        """
+        Single image return observation space
+        :return:
+        """
         done = False
+        # If we have a fragmented batch, skip
         if len(self.current_batch) < self.batch_size:
             image = self.current_batch.cpu()[self.current_batch_index]
             return {"image": image}, True
+        # If we have reached the end of the batch, get a new batch
         if self.current_batch_index >= self.batch_size:
             self.current_batch_index = 0
             self.current_batch_aux_labels = []
@@ -201,12 +226,14 @@ class AuxTaskEnv(gym.Env):
 
         label, weight = action
 
+        # Append to global state
         self.current_batch_aux_labels.append(torch.as_tensor(label, dtype=torch.long))
         self.current_batch_weights.append(torch.as_tensor(weight, dtype=torch.long))
 
         if len(self.current_batch_aux_labels) >= self.batch_size:
             self.num_batches += 1
 
+            # Convert to tensors
             self.current_batch_aux_labels = [
                 torch.from_numpy(x) if isinstance(x, np.ndarray) else x
                 for x in self.current_batch_aux_labels
@@ -216,6 +243,7 @@ class AuxTaskEnv(gym.Env):
                 for x in self.current_batch_weights
             ]
 
+            # Stack the auxiliary labels and weights
             aux_labels = torch.stack(self.current_batch_aux_labels, dim=0)
             weights    = torch.stack(self.current_batch_weights, dim=0)
 
@@ -233,12 +261,14 @@ class AuxTaskEnv(gym.Env):
             self.optimizer.zero_grad()
             primary_output, aux_output = self.model(inputs)
 
+            # Generate mask
             mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
             B, C = mask.shape
             device = mask.device
 
             x = F.one_hot(aux_labels, num_classes=C).float().to(device)
 
+            # Apply mask to the auxiliary labels
             aux_target = mask_softmax(x, mask, dim=1)
             # aux_labels = aux_labels.to(self.device).unsqueeze(1).float()
             # aux_target=mask_softmax(torch.tensor(aux_labels).to(self.device),mask,dim=1)
@@ -293,11 +323,13 @@ class AuxTaskEnv(gym.Env):
     def render(self, mode='human'):
         pass  # Not needed for now
 
+    # RL Agent training
     def train_rl_network_with_rl(self, model, ratio=1):
         episode_length = len(self.train_loader) * self.batch_size # Total steps in an episode
         episode_length = int(episode_length * ratio)
         model.learn(total_timesteps=episode_length)
 
+    # Main model training
     def train_main_network(self, model):
         self.reward_mode=False
         obs, _info = self.reset()

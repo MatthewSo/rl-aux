@@ -2,6 +2,9 @@ from torch.utils.data import Dataset
 from torchvision.datasets import ImageNet as ImageNetOriginal
 
 class ImageNet(Dataset):
+    """
+    ImageNet dataset wrapper.
+    """
     def __init__(self, root, train: bool = True,
                  transform=None,):
         super().__init__()
