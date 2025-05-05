@@ -41,6 +41,8 @@ The entry points are named with keyworks for the type of training they perform:
 - `equal`: Indicates that the auxiliary task weights are equal. (This is the default RL training mode)
 - `no_aux`: Indicates that the auxiliary task weights are not learned and the main network is not trained with an auxiliary task.
 
+NOTE: The Places365 dataset is under active development and the entry point for it may not yet be stable.
+
 ### Run MAXL
 It is easiest to run MAXL as a module from the top directory. There are other scripts to run different versions of maxl in the legacy folder.
 ```
