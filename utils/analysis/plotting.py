@@ -1,12 +1,7 @@
-import pickle
-import torch
-from train.model.performance import EpochPerformance
-from utils.log import log_print
-from utils.vars import softmax
 import matplotlib.pyplot as plt
 from typing import Sequence, Tuple, Iterable, Optional, Dict
 
-
+# Prints epoch performance metrics for training and testing
 def plot_epoch_metrics(
         runs: Iterable[Tuple[Sequence, str]],
         *,

@@ -21,6 +21,7 @@ from sklearn.metrics import f1_score
 import sys
 
 class SeededSubsetRandomSampler(SubsetRandomSampler):
+    # Custom sample that uses a seed for shuffling. Used in the training loop.
     def __init__(self, indices, seed=None):
         self.seed = seed
         super().__init__(indices)

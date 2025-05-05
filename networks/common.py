@@ -6,6 +6,9 @@ import numpy as np
 from networks.primary.vgg import VGG16
 
 class CustomFeatureExtractor(BaseFeaturesExtractor):
+    '''
+    Custom feature extractor that uses a VGG16 network.
+    '''
     def __init__(self, observation_space, features_dim, input_shape=(3, 32, 32)):
         super(CustomFeatureExtractor, self).__init__(observation_space, features_dim)
         self.net = VGG16(primary_task_output=features_dim, auxiliary_task_output=features_dim, input_shape=input_shape)
@@ -16,6 +19,9 @@ class CustomFeatureExtractor(BaseFeaturesExtractor):
         return x
 
 class ActionNet(nn.Module):
+    '''
+    Action function approximator.
+    '''
     def __init__(self, feature_dim, auxiliary_dim):
         super(ActionNet, self).__init__()
         self.auxiliary_dim = auxiliary_dim
@@ -29,6 +35,9 @@ class ActionNet(nn.Module):
         return x
 
 class WeightNet(nn.Module):
+    '''
+    Weight function approximator.
+    '''
     def __init__(self, feature_dim):
         super().__init__()
         self.fc = nn.Linear(feature_dim, 1)
@@ -43,6 +52,9 @@ class WeightNet(nn.Module):
         return x.squeeze(-1)
 
 class ValueNet(nn.Module):
+    '''
+    Value function approximator.
+    '''
     def __init__(self, feature_dim):
         super(ValueNet, self).__init__()
         self.feature_dim = feature_dim
@@ -55,6 +67,9 @@ class ValueNet(nn.Module):
         return x
 
 class ContinuousToMultiDiscrete(gym.ActionWrapper):
+    '''
+    A wrapper that converts continuous actions to discrete actions. For use with SAC.
+    '''
     def __init__(self, env: gym.Env):
         super().__init__(env)
 

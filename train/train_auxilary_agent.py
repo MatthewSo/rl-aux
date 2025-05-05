@@ -7,6 +7,8 @@ from utils.log import log_print
 from utils.vars import softmax
 
 def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batch_size, total_epochs, save_path, primary_dimension, model_train_ratio, skip_rl, rl_pretraining_epochs=0):
+    # Top training loop for training the auxiliary agent and main network
+
     epoch_performances = []
     epoch_performance = None
     num_test_batches = len(test_loader)
@@ -23,6 +25,7 @@ def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batc
             env.save(rl_model)
 
     for index in range(total_epochs):
+        # Alternate between training the auxiliary task and the primary task
         primary_model.train()
         log_print("Starting Epoch: ", index)
         if not skip_rl:
@@ -39,6 +42,7 @@ def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batc
         primary_model=env.cannonical_model
         primary_model.eval()
 
+        # Generate test accuracy to track over time for graphing.
         with torch.no_grad():
             test_loader_iterator = iter(test_loader)
             test_epoch_loss = 0

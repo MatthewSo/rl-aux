@@ -17,6 +17,13 @@ from utils.vars import softmax
 
 
 class AuxTaskEnv(gym.Env):
+    """
+    Auxiliary Task Environment for Reinforcement Learning
+
+    This environment is designed to train a model on an auxiliary task using reinforcement learning.
+    It exposes a single image as observation and takes actions in the form of auxiliary labels.
+    The environment is designed to be used with Stable Baselines3 or similar RL libraries.
+    """
     def __init__(self, train_dataset, device,model,criterion, optimizer_func, scheduler_func, batch_size, image_shape=(3,32,32),pri_dim=20,aux_dim=100,verbose=False, aux_weight = 1, save_path='./' ):
         super(AuxTaskEnv, self).__init__()
         self.primary_dim=pri_dim

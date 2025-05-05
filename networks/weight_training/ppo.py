@@ -6,6 +6,9 @@ def get_weight_training_ppo_agent(env, feature_dim, device, batch_size,
                   learning_rate=3e-4, ent_coef=0.01,
                   n_steps=2048, n_epochs=10):
 
+    '''
+    This is an experimental agent that only learns per datapoint weighting.
+    '''
     policy_kwargs = dict(
         features_extractor_class=CustomFeatureExtractor,
         features_extractor_kwargs=dict(features_dim=feature_dim),

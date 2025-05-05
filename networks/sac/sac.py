@@ -15,6 +15,9 @@ def get_sac_agent(
         tau: float = 0.005,
         ent_coef: str | float = "auto",
 ):
+    '''
+    This is an experimental implementation of a SAC version of the task selection agent.
+    '''
     if isinstance(env.action_space, gym.spaces.MultiDiscrete):
         env = ContinuousToMultiDiscrete(env)
 

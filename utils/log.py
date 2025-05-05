@@ -8,10 +8,12 @@ from typing import Any
 LOG_LOCATION = "./app.log"
 
 def change_log_location(log_location: str):
+    # Sets global log location
     global LOG_LOCATION
     LOG_LOCATION = log_location + "/print.log"
 
 def get_log_location() -> str | os.PathLike[str]:
+    # Returns the log location
     return LOG_LOCATION
 
 def log_print(
@@ -22,6 +24,7 @@ def log_print(
         flush: bool = False,
         **kwargs,
 ) -> None:
+    # Custom print function that logs to a file
     builtins.print(*objects, sep=sep, end=end, file=file, flush=flush, **kwargs)
     msg: str = sep.join(map(str, objects)) + end
     log_path = Path(get_log_location()).expanduser()

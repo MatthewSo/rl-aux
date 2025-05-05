@@ -9,6 +9,9 @@ from networks.common import CustomFeatureExtractor, ActionNet, ValueNet
 
 
 def get_ppo_agent( env, feature_dim, auxiliary_dim, weight_bins, device, batch_size, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10, input_shape=(3, 32, 32)):
+    '''
+    This function creates a PPO agent with a custom feature extractor and action/value networks.
+    '''
     # Set up the RL PPO agent (of course other agent types may make sense too)
     policy_kwargs = {
         "features_extractor_class": CustomFeatureExtractor, #CustomFeatureExtractor,
@@ -37,6 +40,10 @@ def get_fast_dummy_ppo_agent(
         batch_size=16,
         n_epochs=1,
 ):
+    """
+    Returns a dummy PPO agent with a fast feature extractor.
+    Not intended for actual use, but for testing purposes.
+    """
     class FastDictExtractor(BaseFeaturesExtractor):
 
 

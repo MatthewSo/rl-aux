@@ -16,6 +16,13 @@ from utils.randomization import SeededSubsetRandomSampler
 import torch.nn.functional as F
 
 class WeightTuningEnv(gym.Env):
+    """
+    This is an experimental environment for tuning the weights of an auxiliary task using reinforcement learning.
+    The environment is designed to work with a pretrained agent that can label images as auxiliary tasks.
+
+    The environment is used to train a second agent that will learn to adjust the weights of the auxiliary task based on the feedback from the primary task.
+    This is not complete and should not be used for training a real agent.
+    """
     def __init__(self, train_dataset, device, model, labeler, criterion, optimizer_func,
                  scheduler_func, batch_size, image_shape=(3,32,32), pri_dim=20, aux_dim=100,
                  verbose=False, save_path="./"):
@@ -216,17 +223,13 @@ class WeightTuningEnv(gym.Env):
         if save_path is None:
             save_path = self.save_path
 
-        # make path if needed
         if not os.path.exists(save_path):
             os.makedirs(save_path)
 
-        # Save the model and optimizer state
         torch.save(self.model.state_dict(), save_path + "/model.pth")
         torch.save(self.optimizer.state_dict(), save_path + "/optimizer.pth")
         torch.save(self.scheduler.state_dict(), save_path + "/scheduler.pth")
 
-        # Save the cannonical model
         torch.save(self.cannonical_model.state_dict(), save_path + "/cannonical_model.pth")
 
-        # Save the agent stable baselines 3
         agent.save(save_path + "/agent")
