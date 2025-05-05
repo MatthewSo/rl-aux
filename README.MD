@@ -36,6 +36,10 @@ python cifar100_20_entry_point_learn_weights.py
 ```
 There are several at the top level for different configurations and tests. The training scripts generate logs and checkpoints in the run-specific folder. You can also find the configuration of the run in the parameters.json file in the run folder.
 
+The entry points are named with keyworks for the type of training they perform:
+- `learn_weights`: Indicates that the auxiliary task weights are learned.
+- `equal`: Indicates that the auxiliary task weights are equal. (This is the default RL training mode)
+- `no_aux`: Indicates that the auxiliary task weights are not learned and the main network is not trained with an auxiliary task.
 
 ### Run MAXL
 It is easiest to run MAXL as a module from the top directory. There are other scripts to run different versions of maxl in the legacy folder.
