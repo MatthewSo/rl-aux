@@ -16,10 +16,10 @@ from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name
 
 AUX_WEIGHT = 1
-device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 save_path = create_path_name(
-    agent_type="MAXL",
+    agent_type="MAXL_PRINT_TEST",
     primary_model_type="VGG",
     train_ratio=0,
     aux_weight=AUX_WEIGHT,
@@ -113,6 +113,8 @@ class LabelGenerator(nn.Module):
 
         predict = self.classifier(g_block5.view(g_block5.size(0), -1))
         label_pred = self.mask_softmax(predict, mask, dim=1)
+
+        print(label_pred)
 
         return label_pred
 
