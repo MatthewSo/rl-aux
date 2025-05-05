@@ -13,6 +13,8 @@ from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
 
+input("This is an experimental script. Please make sure you have the files downloaded. If this is your first time in this repo, try a different script. Press Enter to continue...")
+
 BATCH_SIZE = 100
 AUX_DIMENSION = 100
 PRIMARY_DIMENSION = 20
