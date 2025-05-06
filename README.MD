@@ -12,7 +12,7 @@ This repo implements an RL framework to learn auxiliary tasks using PPO (Proxima
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/rl-aux.git
+   git clone https://github.com/MatthewSo/rl-aux.git
    cd rl-aux
    ```
 
