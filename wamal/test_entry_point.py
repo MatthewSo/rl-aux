@@ -75,7 +75,7 @@ epoch_performances=[]
 kwargs = {'num_workers': 1, 'pin_memory': True}
 
 psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
-label_model = LabelWeightWrapper(SimplifiedVGG16(num_primary_classes=PRIMARY_CLASS).to(device), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=(3,32,32) ).to(device)
+label_model = LabelWeightWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS).to(device), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=(3,32,32) ).to(device)
 gen_optimizer = optim.SGD(label_model.parameters(), lr=1e-3, weight_decay=5e-4)
 gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=50, gamma=0.5)
 
@@ -85,7 +85,7 @@ train_batch = len(dataloader_train)
 test_batch = len(dataloader_test)
 
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
-wamal_main_model = WamalWrapper(SimplifiedVGG16(num_primary_classes=PRIMARY_CLASS).to(device))
+wamal_main_model = WamalWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS).to(device))
 optimizer = optim.SGD(wamal_main_model.parameters(), lr=0.01)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
 avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
