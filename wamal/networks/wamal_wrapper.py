@@ -7,6 +7,42 @@ import torch
 import torch.nn as nn
 from torch.func import functional_call
 
+def strip_classifier(model: nn.Module, input_shape):
+    # torchvision ResNet / RegNet / EfficientNet (fc)
+    if hasattr(model, 'fc') and isinstance(model.fc, nn.Linear):
+        dim = model.fc.in_features
+        model.fc = nn.Identity()
+        return dim
+
+    # VGG / MobileNet / DenseNet / ViT (classifier)
+    if hasattr(model, 'classifier'):
+        print("In Classification")
+        cls = model.classifier
+        # Linear
+        if isinstance(cls, nn.Linear):
+            dim = cls.in_features
+            model.classifier = nn.Identity()
+            return dim
+        # Sequential – last layer Linear
+        if isinstance(cls, nn.Sequential):
+            print("Sequential")
+            last = list(cls.children())[-1]
+            if isinstance(last, nn.Linear):
+                dim = last.in_features
+                model.classifier = nn.Identity()
+                return dim
+
+    # Fallback: run dummy input to measure
+    raise Exception("Warning: Unable to strip classifier from model. Using dummy input to measure feature dimension.")
+    dummy = torch.zeros(1, *input_shape)
+    with torch.no_grad():
+        feat = model(dummy)
+        if isinstance(feat, (tuple, list)):
+            feat = feat[0]
+        feat = feat.flatten(1)
+    return feat.shape[1]
+
+
 class WamalWrapper(nn.Module):
     def __init__(self,
                  backbone: nn.Module,
@@ -15,7 +51,7 @@ class WamalWrapper(nn.Module):
                  input_shape: Tuple[int, int, int] = (3, 224, 224)):
         super().__init__()
         self.backbone = backbone
-        self.feature_dim = self._strip_classifier(self.backbone, input_shape)
+        self.feature_dim = strip_classifier(self.backbone, input_shape)
         self.num_primary = num_primary
         self.num_auxiliary = num_auxiliary
 
@@ -32,39 +68,6 @@ class WamalWrapper(nn.Module):
             nn.Linear(self.feature_dim, num_auxiliary),
             nn.Softmax(dim=1),
         )
-
-    def _strip_classifier(self, model: nn.Module, input_shape):
-        # torchvision ResNet / RegNet / EfficientNet (fc)
-        if hasattr(model, 'fc') and isinstance(model.fc, nn.Linear):
-            dim = model.fc.in_features
-            model.fc = nn.Identity()
-            return dim
-
-        # VGG / MobileNet / DenseNet / ViT (classifier)
-        if hasattr(model, 'classifier'):
-            cls = model.classifier
-            # Linear
-            if isinstance(cls, nn.Linear):
-                dim = cls.in_features
-                model.classifier = nn.Identity()
-                return dim
-            # Sequential – last layer Linear
-            if isinstance(cls, nn.Sequential):
-                last = list(cls.children())[-1]
-                if isinstance(last, nn.Linear):
-                    dim = last.in_features
-                    model.classifier = nn.Identity()
-                    return dim
-
-        # Fallback: run dummy input to measure
-        print("Warning: Unable to strip classifier from model. Using dummy input to measure feature dimension.")
-        dummy = torch.zeros(1, *input_shape)
-        with torch.no_grad():
-            feat = model(dummy)
-            if isinstance(feat, (tuple, list)):
-                feat = feat[0]
-            feat = feat.flatten(1)
-        return feat.shape[1]
 
     def forward(self,
                 x: torch.Tensor,
@@ -114,7 +117,7 @@ class LabelWeightWrapper(nn.Module):
                  input_shape: Tuple[int, int, int] = (3, 224, 224)):
         super().__init__()
         self.backbone = backbone
-        self.feature_dim = self._strip_classifier(self.backbone, input_shape)
+        self.feature_dim = strip_classifier(self.backbone, input_shape)
         self.num_primary = num_primary
         self.num_auxiliary = num_auxiliary
         self.psi = np.array([num_auxiliary // num_primary] * num_primary)
@@ -132,31 +135,6 @@ class LabelWeightWrapper(nn.Module):
         )
 
     # ---------------- utilities --------------------------------------
-    def _strip_classifier(self, model: nn.Module, input_shape):
-        if hasattr(model, 'fc') and isinstance(model.fc, nn.Linear):
-            dim = model.fc.in_features
-            model.fc = nn.Identity()
-            return dim
-        if hasattr(model, 'classifier'):
-            cls = model.classifier
-            if isinstance(cls, nn.Linear):
-                dim = cls.in_features
-                model.classifier = nn.Identity()
-                return dim
-            if isinstance(cls, nn.Sequential):
-                last = list(cls.children())[-1]
-                if isinstance(last, nn.Linear):
-                    dim = last.in_features
-                    model.classifier = nn.Identity()
-                    return dim
-        dummy = torch.zeros(1, *input_shape)
-        with torch.no_grad():
-            feat = model(dummy)
-            if isinstance(feat, (tuple, list)):
-                feat = feat[0]
-            feat = feat.flatten(1)
-        return feat.shape[1]
-
     @staticmethod
     def _mask_softmax(logits: torch.Tensor, mask: torch.Tensor, dim: int = 1):
         exp = torch.exp(logits) * mask
