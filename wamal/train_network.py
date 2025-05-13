@@ -18,6 +18,7 @@ def inner_sgd_update(model, loss, lr):
 def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, train_batch, test_batch, batch_size, model, label_network, optimizer, scheduler, gen_optimizer, gen_scheduler, num_axuiliary_classes, num_primary_classes, save_path, use_learned_weights, model_lr):
     epoch_performances = []
     avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
+    k=0
     for index in range(total_epoch):
         cost = np.zeros(4, dtype=np.float32)
 
