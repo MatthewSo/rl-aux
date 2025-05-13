@@ -75,7 +75,8 @@ epoch_performances=[]
 kwargs = {'num_workers': 1, 'pin_memory': True}
 
 psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
-label_model = LabelWeightWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS).to(device), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=(3,32,32) ).to(device)
+label_model = LabelWeightWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS).to(device), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=(3,32,32) )
+label_model = label_model.to(device)
 gen_optimizer = optim.SGD(label_model.parameters(), lr=1e-3, weight_decay=5e-4)
 gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=50, gamma=0.5)
 
