@@ -31,6 +31,11 @@ def strip_classifier(model: nn.Module, input_shape):
                 dim = last.in_features
                 model.classifier = nn.Identity()
                 return dim
+            # Check second last layer
+            if len(cls) > 1 and isinstance(cls[-2], nn.Linear):
+                dim = cls[-2].in_features
+                model.classifier = nn.Identity()
+                return dim
 
     # Fallback: run dummy input to measure
     raise Exception("Warning: Unable to strip classifier from model. Using dummy input to measure feature dimension.")
