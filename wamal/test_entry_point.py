@@ -22,7 +22,7 @@ PRIMARY_CLASS = 10
 AUXILIARY_CLASS = 50
 
 save_path = create_path_name(
-    agent_type="MAXL",
+    agent_type="WAMAL-MAXL",
     primary_model_type="VGG",
     train_ratio=1,
     aux_weight=AUX_WEIGHT,
