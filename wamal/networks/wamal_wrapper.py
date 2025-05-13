@@ -16,7 +16,6 @@ def strip_classifier(model: nn.Module, input_shape):
 
     # VGG / MobileNet / DenseNet / ViT (classifier)
     if hasattr(model, 'classifier'):
-        print("In Classification")
         cls = model.classifier
         # Linear
         if isinstance(cls, nn.Linear):
@@ -25,7 +24,6 @@ def strip_classifier(model: nn.Module, input_shape):
             return dim
         # Sequential – last layer Linear
         if isinstance(cls, nn.Sequential):
-            print("Sequential")
             last = list(cls.children())[-1]
             if isinstance(last, nn.Linear):
                 dim = last.in_features
