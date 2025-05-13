@@ -30,7 +30,7 @@ save_path = create_path_name(
     dataset="CIFAR10",
     learn_weights=True,
 )
-device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 
 train_set = CIFAR10(
     root="./data/cifar10",
