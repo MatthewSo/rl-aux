@@ -73,6 +73,11 @@ epoch_performances=[]
 
 
 kwargs = {'num_workers': 1, 'pin_memory': True}
+simpliefied_vgg = SimplifiedVGG16(device=device, num_primary_classes=PRIMARY_CLASS)
+print(simpliefied_vgg)
+# Print layers
+for name, layer in simpliefied_vgg.named_modules():
+    print(name, layer)
 
 psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
 label_model = LabelWeightWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=(3,32,32) )
