@@ -121,7 +121,7 @@ class LabelWeightWrapper(nn.Module):
         self.classifier_head = nn.Sequential(
             nn.Linear(self.feature_dim, self.feature_dim),
             nn.ReLU(inplace=True),
-            nn.Linear(self.feature_dim, self.num_aux),
+            nn.Linear(self.feature_dim, self.num_auxiliary),
         )
         self.weight_head = nn.Sequential(
             nn.Linear(self.feature_dim, self.feature_dim),
