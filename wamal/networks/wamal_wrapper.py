@@ -57,6 +57,7 @@ class WamalWrapper(nn.Module):
                     return dim
 
         # Fallback: run dummy input to measure
+        print("Warning: Unable to strip classifier from model. Using dummy input to measure feature dimension.")
         dummy = torch.zeros(1, *input_shape)
         with torch.no_grad():
             feat = model(dummy)
