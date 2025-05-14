@@ -12,6 +12,7 @@ from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.vit import get_vit
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
+from transformers import ViTForImageClassification, ViTImageProcessor
 
 torch.backends.cuda.enable_flash_sdp(False)
 torch.backends.cuda.enable_mem_efficient_sdp(False)
@@ -100,9 +101,8 @@ kwargs = {'num_workers': 1, 'pin_memory': True}
 
 psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
 
-from torchvision.models import vit_b_16, ViT_B_16_Weights
-weights = ViT_B_16_Weights.DEFAULT
-backbone_model = vit_b_16(weights=weights).eval()
+processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224")
+backbone_model     = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224").to(device).eval()
 
 label_model = LabelWeightWrapper(backbone_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
 label_model = label_model.to(device)
@@ -113,9 +113,8 @@ total_epoch = TOTAL_EPOCH
 train_batch = len(dataloader_train)
 test_batch = len(dataloader_test)
 
-
-weights = ViT_B_16_Weights.DEFAULT
-backbone_model = vit_b_16(weights=weights).eval()
+processor = ViTImageProcessor.from_pretrained("google/vit-base-patch16-224")
+backbone_model     = ViTForImageClassification.from_pretrained("google/vit-base-patch16-224").to(device).eval()
 
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 wamal_main_model = WamalWrapper(backbone_model,num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
