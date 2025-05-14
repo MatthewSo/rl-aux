@@ -35,7 +35,28 @@ def strip_classifier(model: nn.Module, input_shape):
                 dim = cls[-2].in_features
                 model.classifier = nn.Identity()
                 return dim
+    head_names = ["fc", "classifier", "head", "heads"]
+    for name in head_names:
+        if hasattr(model, name):
+            layer = getattr(model, name)
 
+            # torchvision keeps a ModuleDict 'heads', we want its 'head'
+            if name == "heads" and isinstance(layer, nn.ModuleDict) and "head" in layer:
+                layer = layer["head"]
+                setattr(model, "heads", nn.Identity())
+
+            # plain Linear
+            if isinstance(layer, nn.Linear):
+                dim = layer.in_features
+                setattr(model, name, nn.Identity())
+                return dim
+
+            # Sequential whose last item is Linear
+            if isinstance(layer, nn.Sequential):
+                if isinstance(layer[-1], nn.Linear):
+                    dim = layer[-1].in_features
+                    setattr(model, name, nn.Identity())
+                    return dim
     # Fallback: run dummy input to measure
     raise Exception("Warning: Unable to strip classifier from model. Using dummy input to measure feature dimension.")
     dummy = torch.zeros(1, *input_shape)
