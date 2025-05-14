@@ -15,7 +15,7 @@ def inner_sgd_update(model, loss, lr):
     grads = torch.autograd.grad(loss, model.parameters(), create_graph=True)
     return OrderedDict((n, w - lr * g) for (n, w), g in zip(fast.items(), grads))
 
-def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, train_batch, test_batch, batch_size, model, label_network, optimizer, scheduler, gen_optimizer, gen_scheduler, num_axuiliary_classes, num_primary_classes, save_path, use_learned_weights, model_lr):
+def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, train_batch, test_batch, batch_size, model, label_network, optimizer, scheduler, gen_optimizer, gen_scheduler, num_axuiliary_classes, num_primary_classes, save_path, use_learned_weights, model_lr, skip_mal=False):
     epoch_performances = []
     avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
     best_training_performance = 0
@@ -64,7 +64,10 @@ def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, 
             else:
                 aux_loss = torch.mean(train_loss2)
 
-            train_loss = torch.mean(train_loss1) + aux_loss
+            if skip_mal:
+                train_loss = torch.mean(train_loss1)
+            else:
+                train_loss = torch.mean(train_loss1) + aux_loss
 
             train_loss.backward()
 
@@ -82,6 +85,8 @@ def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, 
         # evaluating training data (meta-training step, update on theta_2)
         cifar100_train_dataset = iter(dataloader_train)
         for i in range(train_batch):
+            if skip_mal:
+                continue
             train_data, train_label = next(cifar100_train_dataset)
             train_label = train_label.type(torch.LongTensor)
             train_data, train_label = train_data.to(device), train_label.to(device)

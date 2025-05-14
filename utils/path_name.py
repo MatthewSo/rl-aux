@@ -59,3 +59,15 @@ def save_all_parameters(
     with open(f"{save_path}/parameters.json", "w") as f:
         json.dump(parameters, f, indent=4)
     log_print(f"Parameters saved to {save_path}/parameters.json")
+
+
+def save_parameter_dict(parameter_dict):
+    # create path if it doesnt exist
+    save_path = parameter_dict["save_path"]
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+
+    # Save the parameters to a JSON file
+    with open(f"{save_path}/parameters.json", "w") as f:
+        json.dump(parameter_dict, f, indent=4)
+    log_print(f"Parameters saved to {save_path}/parameters.json")
