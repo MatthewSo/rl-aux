@@ -11,6 +11,7 @@ from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
 import torchvision.models as models
+from torchvision.models import resnet50, ResNet50_Weights
 
 AUX_WEIGHT = 0
 BATCH_SIZE = 100
@@ -90,7 +91,8 @@ epoch_performances=[]
 kwargs = {'num_workers': 1, 'pin_memory': True}
 
 psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
-resnet_model = models.resnet18(pretrained=True)
+weights = ResNet50_Weights.DEFAULT          # = IMAGENET1K_V2 weights
+resnet_model   = resnet50(weights=weights)
 
 label_model = LabelWeightWrapper(resnet_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
 
@@ -102,7 +104,8 @@ total_epoch = TOTAL_EPOCH
 train_batch = len(dataloader_train)
 test_batch = len(dataloader_test)
 
-resnet_model = models.resnet18(pretrained=True)
+weights = ResNet50_Weights.DEFAULT          # = IMAGENET1K_V2 weights
+resnet_model   = resnet50(weights=weights)
 
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 wamal_main_model = WamalWrapper(resnet_model,num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)

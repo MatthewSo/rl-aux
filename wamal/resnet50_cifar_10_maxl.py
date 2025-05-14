@@ -17,7 +17,7 @@ AUX_WEIGHT = 0
 BATCH_SIZE = 100
 PRIMARY_CLASS = 10
 AUXILIARY_CLASS = 50
-SKIP_MAL = True
+SKIP_MAL = False
 LEARN_WEIGHTS = False
 TOTAL_EPOCH = 200
 PRIMARY_LR = 0.01
@@ -29,7 +29,7 @@ GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 
 save_path = create_path_name(
-    agent_type="WAMAL-SINGLE",
+    agent_type="WAMAL-MAXL",
     primary_model_type="RESNET50",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
