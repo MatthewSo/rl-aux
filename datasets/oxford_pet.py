@@ -25,25 +25,3 @@ class OxfordIIITPet(Dataset):
     def __getitem__(self, idx):
         img, category_id = self.pet[idx]   # returns a single int when target_types="category"
         return img, category_id
-
-
-# -------------------------------------------------
-# 3. Stanford Cars (Krause et al., 2013)
-# -------------------------------------------------
-class StanfordCars(Dataset):
-    """Stanford Cars dataset wrapper."""
-    def __init__(self, root, train=True, transform=None, download=False):
-        split = "train" if train else "test"
-        self.cars = StanfordCarsOriginal(
-            root=root,
-            split=split,
-            transform=transform,
-            download=download,
-        )
-
-    def __len__(self):
-        return len(self.cars)
-
-    def __getitem__(self, idx):
-        img, class_id = self.cars[idx]     # already (image, int) in torchvision
-        return img, class_id
