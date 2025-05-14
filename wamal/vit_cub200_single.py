@@ -1,9 +1,7 @@
 import subprocess
 
 from datasets.capped_dataset import PerClassCap
-from datasets.cifar10 import CIFAR10
 from datasets.cub200 import CUB200
-from datasets.stanford_cars import StanfordCars
 from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
 import numpy as np
 import torch
@@ -11,10 +9,9 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.networks.vit import get_vit
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
-import torchvision.models as models
-from torchvision.models import vit_b_16, ViT_B_16_Weights
 
 
 AUX_WEIGHT = 0
@@ -100,8 +97,7 @@ kwargs = {'num_workers': 1, 'pin_memory': True}
 
 psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
 
-weights = ViT_B_16_Weights.DEFAULT
-backbone_model = vit_b_16(weights=weights).eval()
+backbone_model = get_vit()
 
 label_model = LabelWeightWrapper(backbone_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
 label_model = label_model.to(device)
@@ -113,8 +109,7 @@ train_batch = len(dataloader_train)
 test_batch = len(dataloader_test)
 
 
-weights = ViT_B_16_Weights.DEFAULT
-backbone_model = vit_b_16(weights=weights).eval()
+backbone_model = get_vit()
 
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 wamal_main_model = WamalWrapper(backbone_model,num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
