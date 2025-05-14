@@ -14,6 +14,7 @@ def strip_classifier(model: nn.Module, input_shape):
         dim = model.fc.in_features
         model.fc = nn.Identity()
         return dim
+    print(model)
 
     # VGG / MobileNet / DenseNet / ViT (classifier)
     if hasattr(model, 'classifier'):
