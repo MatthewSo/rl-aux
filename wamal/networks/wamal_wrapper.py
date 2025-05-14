@@ -122,6 +122,8 @@ class WamalWrapper(nn.Module):
         bb_ov = {k.split('backbone.', 1)[1]: v for k, v in merged.items()
                  if k.startswith('backbone.')}
         feat = functional_call(self.backbone, bb_ov, (x,), kwargs)
+        if isinstance(feat, ModelOutput):
+            feat = feat.logits
         if isinstance(feat, (tuple, list)):
             feat = feat[0]
         feat = feat.flatten(1)
@@ -235,6 +237,8 @@ class LabelWeightWrapper(nn.Module):
 
         bb_ov = {k.split('backbone.',1)[1]:v for k,v in merged.items() if k.startswith('backbone.')}
         feat = functional_call(self.backbone, bb_ov, (x,), kwargs)
+        if isinstance(feat, ModelOutput):
+            feat = feat.logits
         if isinstance(feat, (tuple, list)):
             feat = feat[0]
         feat = feat.flatten(1)
