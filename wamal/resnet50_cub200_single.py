@@ -46,13 +46,11 @@ train_set = CUB200(
     root="./data/cub200",
     train=True,
     transform=common_train_tf,
-    download=True
 )
 test_set = CUB200(
     root="./data/cub200",
     train=False,
     transform=common_train_tf,
-    download=True
 )
 
 
