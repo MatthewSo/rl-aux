@@ -1,11 +1,5 @@
-from pathlib import Path
-import os
-import pandas as pd
-from PIL import Image
 from torch.utils.data import Dataset
-from torchvision import transforms
 from torchvision.datasets import OxfordIIITPet as OxfordIIITPetOriginal
-from torchvision.datasets import StanfordCars as StanfordCarsOriginal
 
 class OxfordIIITPet(Dataset):
     """Oxford-IIIT Pet dataset wrapper."""

@@ -2,7 +2,7 @@ import subprocess
 
 from datasets.cifar10 import CIFAR10
 from datasets.cub200 import CUB200
-from datasets.oxford_pet import StanfordCars
+from datasets.stanford_cars import StanfordCars
 from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf
 import numpy as np
 import torch
