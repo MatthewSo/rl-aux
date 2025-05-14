@@ -20,14 +20,15 @@ PRIMARY_CLASS = 200
 AUXILIARY_CLASS = 1000
 SKIP_MAL = False
 LEARN_WEIGHTS = True
-TOTAL_EPOCH = 200
-PRIMARY_LR = 0.01
+TOTAL_EPOCH = 75
+PRIMARY_LR = 10e-4
 STEP_SIZE = 50
 IMAGE_SHAPE = (3, 112, 112)
 GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
+OPTIMIZER="ADAM"
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -73,6 +74,7 @@ save_parameter_dict(
         "gen_optimizer_weight_decay": GEN_OPTIMIZER_WEIGHT_DECAY,
         "gen_optimizer_lr": GEN_OPTIMIZER_LR,
         "train_ratio": TRAIN_RATIO,
+        "optimizer": OPTIMIZER,
     }
 )
 
@@ -113,7 +115,8 @@ resnet_model   = resnet50(weights=weights)
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 wamal_main_model = WamalWrapper(resnet_model,num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
 wamal_main_model = wamal_main_model.to(device)
-optimizer = optim.SGD(wamal_main_model.parameters(), lr=PRIMARY_LR)
+#optimizer = optim.SGD(wamal_main_model.parameters(), lr=PRIMARY_LR)
+optimizer = optim.Adam(wamal_main_model.parameters(), lr=PRIMARY_LR)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
 vgg_lr = PRIMARY_LR # define learning rate for second-derivative step (theta_1^+)
