@@ -15,7 +15,7 @@ from torchvision.models import resnet50, ResNet50_Weights
 
 
 AUX_WEIGHT = 0
-BATCH_SIZE = 100
+BATCH_SIZE = 30
 PRIMARY_CLASS = 37
 AUXILIARY_CLASS = 185
 SKIP_MAL = True

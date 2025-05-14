@@ -19,7 +19,7 @@ torch.backends.cuda.enable_mem_efficient_sdp(False)
 torch.backends.cuda.enable_math_sdp(True)
 
 AUX_WEIGHT = 0
-BATCH_SIZE = 100
+BATCH_SIZE = 30
 PRIMARY_CLASS = 37
 AUXILIARY_CLASS = 185
 SKIP_MAL = True
