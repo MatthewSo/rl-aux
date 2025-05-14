@@ -101,6 +101,9 @@ psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
 
 weights = ViT_B_16_Weights.DEFAULT
 backbone_model = vit_b_16(weights=weights).eval()
+print(backbone_model)
+# print backbone model layers
+print(backbone_model.named_modules())
 
 label_model = LabelWeightWrapper(backbone_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
 label_model = label_model.to(device)

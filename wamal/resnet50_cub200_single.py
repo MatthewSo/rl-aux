@@ -1,10 +1,8 @@
 import subprocess
 
 from datasets.capped_dataset import PerClassCap
-from datasets.cifar10 import CIFAR10
 from datasets.cub200 import CUB200
-from datasets.stanford_cars import StanfordCars
-from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
+from datasets.transforms import common_train_tf, common_test_tf
 import numpy as np
 import torch
 import torch.optim as optim
@@ -13,7 +11,6 @@ from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
-import torchvision.models as models
 from torchvision.models import resnet50, ResNet50_Weights
 
 
