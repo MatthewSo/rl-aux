@@ -9,7 +9,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
-from wamal.networks.vit import get_vit
+from wamal.networks.vit import get_vit, vit_collate
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
 from transformers import ViTForImageClassification, ViTImageProcessor
@@ -48,15 +48,25 @@ device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 train_set = OxfordIIITPet(
     root="./data/oxford_pet",
     train=True,
-    transform=common_train_tf,
 )
 test_set = OxfordIIITPet(
     root="./data/oxford_pet",
     train=False,
-    transform=common_test_tf,
 )
 train_set = PerClassCap(train_set)
 
+dataloader_train = torch.utils.data.DataLoader(
+    dataset=train_set,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    collate_fn=vit_collate
+)
+dataloader_test = torch.utils.data.DataLoader(
+    dataset=test_set,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    collate_fn=vit_collate
+)
 
 
 ###  DON'T CHANGE THIS PART ###
@@ -83,16 +93,6 @@ save_parameter_dict(
     }
 )
 
-dataloader_train = torch.utils.data.DataLoader(
-    dataset=train_set,
-    batch_size=BATCH_SIZE,
-    shuffle=True
-)
-dataloader_test = torch.utils.data.DataLoader(
-    dataset=test_set,
-    batch_size=BATCH_SIZE,
-    shuffle=True
-)
 
 change_log_location(save_path)
 epoch_performances=[]

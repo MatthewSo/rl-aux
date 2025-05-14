@@ -9,7 +9,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
-from wamal.networks.vit import get_vit
+from wamal.networks.vit import get_vit, vit_collate
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
 from transformers import ViTForImageClassification, ViTImageProcessor
@@ -58,6 +58,18 @@ test_set = CUB200(
 
 train_set = PerClassCap(train_set)
 
+dataloader_train = torch.utils.data.DataLoader(
+    dataset=train_set,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    collate_fn=vit_collate
+)
+dataloader_test = torch.utils.data.DataLoader(
+    dataset=test_set,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    collate_fn=vit_collate
+)
 
 ###  DON'T CHANGE THIS PART ###
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
