@@ -15,8 +15,8 @@ from wamal.train_network import train_wamal_network
 
 AUX_WEIGHT = 0
 BATCH_SIZE = 100
-PRIMARY_CLASS = 10
-AUXILIARY_CLASS = 50
+PRIMARY_CLASS = 20
+AUXILIARY_CLASS = 100
 SKIP_MAL = True
 LEARN_WEIGHTS = True
 TOTAL_EPOCH = 200
