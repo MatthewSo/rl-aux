@@ -2,6 +2,7 @@ import subprocess
 
 from datasets.cifar10 import CIFAR10
 from datasets.cub200 import CUB200
+from datasets.oxford_pet import StanfordCars
 from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf
 import numpy as np
 import torch
@@ -17,8 +18,8 @@ import torchvision.models as models
 
 AUX_WEIGHT = 0
 BATCH_SIZE = 100
-PRIMARY_CLASS = 200
-AUXILIARY_CLASS = 1000
+PRIMARY_CLASS = 196
+AUXILIARY_CLASS = 980
 SKIP_MAL = True
 LEARN_WEIGHTS = False
 TOTAL_EPOCH = 200
@@ -36,19 +37,19 @@ save_path = create_path_name(
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
     observation_feature_dimensions=0,
-    dataset="CUB200",
+    dataset="StanfordCars",
     learn_weights=LEARN_WEIGHTS,
 )
 device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
-train_set = CUB200(
-    root="./data/cub200",
+train_set = StanfordCars(
+    root="./data/stanfordcars",
     train=True,
     transform=common_train_tf,
     download=True
 )
-test_set = CUB200(
-    root="./data/cub200",
+test_set = StanfordCars(
+    root="./data/stanfordcars",
     train=False,
     transform=common_train_tf,
     download=True
