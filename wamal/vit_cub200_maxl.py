@@ -12,7 +12,9 @@ from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.vit import get_vit
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
-
+torch.backends.cuda.enable_flash_sdp(False)
+torch.backends.cuda.enable_mem_efficient_sdp(False)
+torch.backends.cuda.enable_math_sdp(True)
 
 AUX_WEIGHT = 0
 BATCH_SIZE = 30
