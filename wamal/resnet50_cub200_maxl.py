@@ -13,7 +13,6 @@ from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
 from torchvision.models import resnet50, ResNet50_Weights
 
-from wamal.vit_cub200_wamal import OPTIMIZER
 
 AUX_WEIGHT = 0
 BATCH_SIZE = 30
