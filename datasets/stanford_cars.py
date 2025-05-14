@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision.datasets import OxfordIIITPet as OxfordIIITPetOriginal
 from torchvision.datasets import StanfordCars as StanfordCarsOriginal
+from torchvision import datasets
 from datasets import load_dataset
 
 class StanfordCars(Dataset):
