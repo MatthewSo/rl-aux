@@ -43,7 +43,7 @@ save_path = create_path_name(
     dataset="OXFORDPET",
     learn_weights=LEARN_WEIGHTS,
 )
-device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 
 train_set = OxfordIIITPet(
     root="./data/oxford_pet",
