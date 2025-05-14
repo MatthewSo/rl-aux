@@ -45,13 +45,12 @@ cifar100_train = CIFAR100(
     transform=cifar_trans_train,
     download=True
 )
-cifar100_test= CIFAR10(
+cifar100_test= CIFAR100(
     root="./data/cifar100",
     train=False,
     transform=cifar_trans_test,
     download=True
 )
-
 
 train_set = CoarseLabelCIFAR100(
     cifar100_train,
