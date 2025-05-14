@@ -12,7 +12,9 @@ from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.vit import get_vit
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
-
+torch.backends.cuda.enable_flash_sdp(False)
+torch.backends.cuda.enable_mem_efficient_sdp(False)
+torch.backends.cuda.enable_math_sdp(True)
 
 AUX_WEIGHT = 0
 BATCH_SIZE = 30
@@ -29,6 +31,7 @@ GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
+OPTIMIZER="ADAM"
 
 save_path = create_path_name(
     agent_type="WAMAL-SINGLE",
@@ -75,7 +78,7 @@ save_parameter_dict(
         "gen_optimizer_weight_decay": GEN_OPTIMIZER_WEIGHT_DECAY,
         "gen_optimizer_lr": GEN_OPTIMIZER_LR,
         "train_ratio": TRAIN_RATIO,
-        "optimizer": "ADAM",
+        "optimizer": OPTIMIZER,
     }
 )
 
@@ -97,7 +100,9 @@ kwargs = {'num_workers': 1, 'pin_memory': True}
 
 psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
 
-backbone_model = get_vit()
+from torchvision.models import vit_b_16, ViT_B_16_Weights
+weights = ViT_B_16_Weights.DEFAULT
+backbone_model = vit_b_16(weights=weights).eval()
 
 label_model = LabelWeightWrapper(backbone_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
 label_model = label_model.to(device)
@@ -109,7 +114,8 @@ train_batch = len(dataloader_train)
 test_batch = len(dataloader_test)
 
 
-backbone_model = get_vit()
+weights = ViT_B_16_Weights.DEFAULT
+backbone_model = vit_b_16(weights=weights).eval()
 
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 wamal_main_model = WamalWrapper(backbone_model,num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
