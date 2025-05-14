@@ -1,5 +1,6 @@
 import subprocess
 
+from datasets.capped_dataset import PerClassCap
 from datasets.cifar10 import CIFAR10
 from datasets.cub200 import CUB200
 from datasets.stanford_cars import StanfordCars
@@ -53,6 +54,7 @@ test_set = CUB200(
     transform=common_test_tf,
 )
 
+train_set = PerClassCap(train_set)
 
 
 ###  DON'T CHANGE THIS PART ###
