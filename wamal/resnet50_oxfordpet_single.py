@@ -45,11 +45,13 @@ train_set = OxfordIIITPet(
     root="./data/oxford_pet",
     train=True,
     transform=common_train_tf,
+    download=True
 )
 test_set = OxfordIIITPet(
     root="./data/oxford_pet",
     train=False,
     transform=common_test_tf,
+    download=True
 )
 train_set = PerClassCap(train_set)
 
