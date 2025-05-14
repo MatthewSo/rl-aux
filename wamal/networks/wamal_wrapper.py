@@ -1,4 +1,5 @@
 from __future__ import annotations
+from transformers.modeling_outputs import ModelOutput
 
 import numpy as np
 import torch, importlib
@@ -103,6 +104,8 @@ class WamalWrapper(nn.Module):
                 **kwargs):
         if params is None and buffers is None:
             feat = self.backbone(x, **kwargs)
+            if isinstance(feat, ModelOutput):
+                feat = feat.logits
             if isinstance(feat, (tuple, list)):
                 feat = feat[0]
             feat = feat.flatten(1)
@@ -215,6 +218,8 @@ class LabelWeightWrapper(nn.Module):
                 **kwargs):
         if params is None and buffers is None:
             feat = self.backbone(x, **kwargs)
+            if isinstance(feat, ModelOutput):
+                feat = feat.logits
             if isinstance(feat, (tuple, list)):
                 feat = feat[0]
             feat = feat.flatten(1)
