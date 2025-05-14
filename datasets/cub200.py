@@ -22,7 +22,7 @@ class CUB200(Dataset):
                     if img_path.suffix.lower() in {".jpg", ".jpeg", ".png"}:
                         self.samples.append((img_path, class_to_idx[cls]))
             if self.samples:
-                return  
+                return
 
         base = self.root / "CUB_200_2011"
         if download:
