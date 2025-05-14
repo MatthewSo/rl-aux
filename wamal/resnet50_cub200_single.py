@@ -17,7 +17,7 @@ import torchvision.models as models
 
 
 AUX_WEIGHT = 0
-BATCH_SIZE = 100
+BATCH_SIZE = 30
 PRIMARY_CLASS = 200
 AUXILIARY_CLASS = 1000
 SKIP_MAL = True
