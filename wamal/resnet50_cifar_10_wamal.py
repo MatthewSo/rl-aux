@@ -1,9 +1,7 @@
 import subprocess
 
 from datasets.cifar10 import CIFAR10
-from datasets.cub200 import CUB200
-from datasets.stanford_cars import StanfordCars
-from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
+from datasets.transforms import cifar_trans_test, cifar_trans_train
 import numpy as np
 import torch
 import torch.optim as optim
@@ -14,45 +12,42 @@ from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
 import torchvision.models as models
 
-
-
 AUX_WEIGHT = 0
-BATCH_SIZE = 30
-PRIMARY_CLASS = 200
-AUXILIARY_CLASS = 1000
-SKIP_MAL = True
-LEARN_WEIGHTS = False
+BATCH_SIZE = 100
+PRIMARY_CLASS = 10
+AUXILIARY_CLASS = 50
+SKIP_MAL = False
+LEARN_WEIGHTS = True
 TOTAL_EPOCH = 200
 PRIMARY_LR = 0.01
 STEP_SIZE = 50
-IMAGE_SHAPE = (3, 224, 224)
+IMAGE_SHAPE = (3, 32, 32)
 GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 
 save_path = create_path_name(
-    agent_type="WAMAL-SINGLE",
+    agent_type="WAMAL",
     primary_model_type="RESNET50",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
     observation_feature_dimensions=0,
-    dataset="CUB200",
+    dataset="CIFAR10",
     learn_weights=LEARN_WEIGHTS,
 )
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-train_set = CUB200(
-    root="./data/cub200",
+train_set = CIFAR10(
+    root="./data/cifar10",
     train=True,
-    transform=common_train_tf,
+    transform=cifar_trans_train
 )
-test_set = CUB200(
-    root="./data/cub200",
+test_set = CIFAR10(
+    root="./data/cifar10",
     train=False,
-    transform=common_test_tf,
+    transform=cifar_trans_test
 )
-
 
 
 ###  DON'T CHANGE THIS PART ###
@@ -95,10 +90,10 @@ epoch_performances=[]
 kwargs = {'num_workers': 1, 'pin_memory': True}
 
 psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
-
 resnet_model = models.resnet18(pretrained=True)
 
 label_model = LabelWeightWrapper(resnet_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
+
 label_model = label_model.to(device)
 gen_optimizer = optim.SGD(label_model.parameters(), lr=GEN_OPTIMIZER_LR, weight_decay=GEN_OPTIMIZER_WEIGHT_DECAY)
 gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=STEP_SIZE, gamma=GAMMA)
@@ -106,7 +101,6 @@ gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=STEP_SIZE, ga
 total_epoch = TOTAL_EPOCH
 train_batch = len(dataloader_train)
 test_batch = len(dataloader_test)
-
 
 resnet_model = models.resnet18(pretrained=True)
 
