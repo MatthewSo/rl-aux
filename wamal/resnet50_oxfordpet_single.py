@@ -1,8 +1,11 @@
 import subprocess
 
 from datasets.capped_dataset import PerClassCap
+from datasets.cifar10 import CIFAR10
 from datasets.cub200 import CUB200
-from datasets.transforms import  common_train_tf, common_test_tf
+from datasets.oxford_pet import OxfordIIITPet
+from datasets.stanford_cars import StanfordCars
+from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
 import numpy as np
 import torch
 import torch.optim as optim
@@ -11,6 +14,7 @@ from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
+import torchvision.models as models
 from torchvision.models import resnet50, ResNet50_Weights
 
 
@@ -18,7 +22,7 @@ AUX_WEIGHT = 0
 BATCH_SIZE = 30
 PRIMARY_CLASS = 200
 AUXILIARY_CLASS = 1000
-SKIP_MAL = False
+SKIP_MAL = True
 LEARN_WEIGHTS = False
 TOTAL_EPOCH = 200
 PRIMARY_LR = 0.01
@@ -30,7 +34,7 @@ GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 
 save_path = create_path_name(
-    agent_type="WAMAL-MAXL",
+    agent_type="WAMAL-SINGLE",
     primary_model_type="RESNET50",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
@@ -38,18 +42,19 @@ save_path = create_path_name(
     dataset="CUB200",
     learn_weights=LEARN_WEIGHTS,
 )
-device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
-train_set = CUB200(
-    root="./data/cub200",
+train_set = OxfordIIITPet(
+    root="./data/oxfordpet",
     train=True,
     transform=common_train_tf,
 )
-test_set = CUB200(
-    root="./data/cub200",
+test_set = OxfordIIITPet(
+    root="./data/oxfordpet",
     train=False,
     transform=common_test_tf,
 )
+
 train_set = PerClassCap(train_set)
 
 
