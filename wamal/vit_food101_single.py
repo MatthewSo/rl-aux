@@ -53,10 +53,12 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 train_set = Food101(
     root="./data/food101",
     train=True,
+    download=True
 )
 test_set = Food101(
     root="./data/food101",
     train=False,
+    download=True
 )
 
 if not FULL_DATASET:
