@@ -94,17 +94,6 @@ save_parameter_dict(
     }
 )
 
-dataloader_train = torch.utils.data.DataLoader(
-    dataset=train_set,
-    batch_size=BATCH_SIZE,
-    shuffle=True
-)
-dataloader_test = torch.utils.data.DataLoader(
-    dataset=test_set,
-    batch_size=BATCH_SIZE,
-    shuffle=True
-)
-
 change_log_location(save_path)
 epoch_performances=[]
 
