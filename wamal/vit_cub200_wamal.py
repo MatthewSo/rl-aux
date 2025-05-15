@@ -46,7 +46,7 @@ save_path = create_path_name(
     full_dataset=FULL_DATASET,
     learning_rate=PRIMARY_LR,
 )
-device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 
 train_set = CUB200(
     root="./data/cub200",
