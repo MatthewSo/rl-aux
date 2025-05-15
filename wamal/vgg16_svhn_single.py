@@ -11,7 +11,6 @@ from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.vgg_16 import SimplifiedVGG16
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
-from wamal.resnet50_cub200_wamal import OPTIMIZER
 from wamal.train_network import train_wamal_network
 
 AUX_WEIGHT = 0
