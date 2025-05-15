@@ -11,6 +11,7 @@ from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.vgg_16 import SimplifiedVGG16
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
+from wamal.resnet50_cub200_wamal import OPTIMIZER
 from wamal.train_network import train_wamal_network
 
 AUX_WEIGHT = 0
@@ -27,6 +28,7 @@ GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
+OPTIMIZER = "SGD"
 
 save_path = create_path_name(
     agent_type="WAMAL-SINGLE",
@@ -36,6 +38,7 @@ save_path = create_path_name(
     observation_feature_dimensions=0,
     dataset="SVHN",
     learn_weights=LEARN_WEIGHTS,
+    optimizer=OPTIMIZER,
 )
 device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 

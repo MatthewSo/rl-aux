@@ -27,6 +27,7 @@ GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
+OPTIMIZER = "SGD"
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -36,6 +37,7 @@ save_path = create_path_name(
     observation_feature_dimensions=0,
     dataset="SVHN",
     learn_weights=LEARN_WEIGHTS,
+    optimizer=OPTIMIZER,
 )
 device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 
