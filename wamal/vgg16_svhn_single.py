@@ -37,7 +37,7 @@ save_path = create_path_name(
     dataset="SVHN",
     learn_weights=LEARN_WEIGHTS,
 )
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 train_set = SVHN(
     root="./data/svhn",
