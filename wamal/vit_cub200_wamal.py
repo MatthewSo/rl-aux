@@ -41,18 +41,17 @@ save_path = create_path_name(
     observation_feature_dimensions=0,
     dataset="CUB200",
     learn_weights=LEARN_WEIGHTS,
+    optimizer=OPTIMIZER,
 )
 device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
 
 train_set = CUB200(
     root="./data/cub200",
     train=True,
-    transform=common_train_tf,
 )
 test_set = CUB200(
     root="./data/cub200",
     train=False,
-    transform=common_test_tf,
 )
 
 train_set = PerClassCap(train_set)

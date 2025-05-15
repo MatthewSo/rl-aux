@@ -42,6 +42,7 @@ save_path = create_path_name(
     observation_feature_dimensions=0,
     dataset="OXFORDPET",
     learn_weights=LEARN_WEIGHTS,
+    optimizer=OPTIMIZER,
 )
 device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
