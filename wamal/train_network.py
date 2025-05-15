@@ -15,7 +15,7 @@ def inner_sgd_update(model, loss, lr):
     grads = torch.autograd.grad(loss, model.parameters(), create_graph=True)
     return OrderedDict((n, w - lr * g) for (n, w), g in zip(fast.items(), grads))
 
-def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, train_batch, test_batch, batch_size, model, label_network, optimizer, scheduler, gen_optimizer, gen_scheduler, num_axuiliary_classes, num_primary_classes, save_path, use_learned_weights, model_lr, skip_mal=False):
+def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, train_batch, test_batch, batch_size, model, label_network, optimizer, scheduler, gen_optimizer, gen_scheduler, num_axuiliary_classes, num_primary_classes, save_path, use_learned_weights, model_lr, val_range, skip_mal=False):
     epoch_performances = []
     avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
     best_training_performance = 0
@@ -58,7 +58,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, 
             # cosine similarity evaluation ends here
 
             if use_learned_weights:
-                weight_factors = torch.pow(2.0, 10.0 * aux_weight - 5.0)
+                weight_factors = torch.pow(2.0, ( 2* val_range * aux_weight) - val_range)
                 aux_loss = torch.mean(train_loss2 * weight_factors)
 
             else:
@@ -107,7 +107,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, 
             # element-wise multiplication between auxiliary loss and auxiliary weight
 
             if use_learned_weights:
-                weight_factors = torch.pow(2.0, 10.0 * aux_weight - 5.0)
+                weight_factors = torch.pow(2.0, (val_range * 2) * aux_weight - val_range)
                 aux_loss = torch.mean(train_loss2 * weight_factors)
 
             else:

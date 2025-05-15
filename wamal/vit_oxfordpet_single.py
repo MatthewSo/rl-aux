@@ -34,6 +34,8 @@ GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
+range = 4.0
+
 save_path = create_path_name(
     agent_type="WAMAL-SINGLE",
     primary_model_type="VIT",
@@ -45,6 +47,7 @@ save_path = create_path_name(
     optimizer=OPTIMIZER,
     full_dataset=FULL_DATASET,
     learning_rate=PRIMARY_LR,
+    range=range,
 )
 device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 

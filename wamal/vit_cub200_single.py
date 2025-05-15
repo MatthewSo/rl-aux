@@ -27,13 +27,14 @@ LEARN_WEIGHTS = False
 TOTAL_EPOCH = 75
 PRIMARY_LR = 5e-4
 STEP_SIZE = 50
-IMAGE_SHAPE = (3, 112, 112)
+IMAGE_SHAPE = (3, 224, 224)
 GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
-FULL_DATASET = TrueOPTIMIZER="SGD"
+FULL_DATASET = True
+RANGE = 4.0
 
 save_path = create_path_name(
     agent_type="WAMAL-SINGLE",
@@ -46,6 +47,7 @@ save_path = create_path_name(
     optimizer=OPTIMIZER,
     full_dataset=FULL_DATASET,
     learning_rate=PRIMARY_LR,
+    range=RANGE,
 )
 device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
@@ -95,6 +97,7 @@ save_parameter_dict(
         "gen_optimizer_lr": GEN_OPTIMIZER_LR,
         "train_ratio": TRAIN_RATIO,
         "optimizer": OPTIMIZER,
+        "range": RANGE
     }
 )
 
@@ -141,4 +144,4 @@ train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL)
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE)

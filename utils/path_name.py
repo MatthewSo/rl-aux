@@ -4,8 +4,8 @@ import os
 from utils.log import log_print
 
 
-def create_path_name(agent_type, learn_weights, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset, optimizer, full_dataset, learning_rate):
-    return f"./trained_models/{agent_type}_{primary_model_type}_learn_weights_{learn_weights}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}_{dataset}_optimizer_{optimizer}_fulldataset_{full_dataset}_lr_{learning_rate}"
+def create_path_name(agent_type, learn_weights, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset, optimizer, full_dataset, learning_rate, range):
+    return f"./trained_models/{agent_type}_{primary_model_type}_learn_weights_{learn_weights}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}_{dataset}_optimizer_{optimizer}_fulldataset_{full_dataset}_lr_{learning_rate}_range_{range}"
 
 
 def save_all_parameters(

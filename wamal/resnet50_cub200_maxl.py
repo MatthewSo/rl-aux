@@ -25,11 +25,13 @@ PRIMARY_LR = 1e-3
 STEP_SIZE = 50
 IMAGE_SHAPE = (3, 224, 224)
 GAMMA = 0.5
-GEN_OPTIMIZER_LR = 1e-3
+GEN_OPTIMIZER_LR = 1e-2
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
+RANGE = 5.0
+
 save_path = create_path_name(
     agent_type="WAMAL-MAXL",
     primary_model_type="RESNET50",
@@ -39,7 +41,10 @@ save_path = create_path_name(
     dataset="CUB200",
     learn_weights=LEARN_WEIGHTS,
     optimizer=OPTIMIZER,
-    full_dataset=FULL_DATASET,)
+    full_dataset=FULL_DATASET,
+    range=RANGE,
+    learning_rate=PRIMARY_LR,
+)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 train_set = CUB200(
@@ -134,4 +139,4 @@ train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL)
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE)
