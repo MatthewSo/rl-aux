@@ -24,7 +24,7 @@ AUXILIARY_CLASS = 1000
 SKIP_MAL = False
 LEARN_WEIGHTS = True
 TOTAL_EPOCH = 75
-PRIMARY_LR = 1e-3
+PRIMARY_LR = 5e-4
 STEP_SIZE = 50
 IMAGE_SHAPE = (3, 112, 112)
 GAMMA = 0.5
@@ -43,7 +43,9 @@ save_path = create_path_name(
     dataset="CUB200",
     learn_weights=LEARN_WEIGHTS,
     optimizer=OPTIMIZER,
-    full_dataset=FULL_DATASET,)
+    full_dataset=FULL_DATASET,
+    learning_rate=PRIMARY_LR,
+)
 device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 
 train_set = CUB200(
