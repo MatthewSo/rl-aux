@@ -45,7 +45,7 @@ save_path = create_path_name(
     learn_weights=LEARN_WEIGHTS,
     optimizer=OPTIMIZER,
     full_dataset=FULL_DATASET,)
-device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
 
 train_set = CUB200(
     root="./data/cub200",
