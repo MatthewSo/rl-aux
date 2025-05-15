@@ -94,3 +94,33 @@ def plot_epoch_metrics(
 
         plt.tight_layout()
         plt.show()
+
+
+def best_test_accuracy_first_n_epochs(
+        runs: Iterable[Tuple[Sequence, str]],
+        n_epochs: int,
+        *,
+        aux: bool = False,
+) -> Tuple[str, float]:
+    if n_epochs <= 0:
+        raise ValueError("n_epochs must be a positive integer.")
+    suffix = "auxiliary" if aux else "primary"
+
+    best_label: Optional[str] = None
+    best_acc: float = float("-inf")
+
+    for epoch_data, label in runs:
+        # Examine at most the first n_epochs entries for this run
+        window = epoch_data[:n_epochs]
+
+        for e in window:
+            acc = getattr(e, f"test_accuracy_{suffix}", float("nan"))
+            if acc is not None and acc == acc:  # skip NaN
+                if acc > best_acc:
+                    best_acc = acc
+                    best_label = label
+
+    if best_label is None:
+        raise ValueError("No valid accuracy values found in the supplied runs.")
+
+    return best_label, best_acc
