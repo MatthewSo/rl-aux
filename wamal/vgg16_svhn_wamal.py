@@ -29,7 +29,7 @@ GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 
 save_path = create_path_name(
-    agent_type="WAMAL-SINGLE",
+    agent_type="WAMAL",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
