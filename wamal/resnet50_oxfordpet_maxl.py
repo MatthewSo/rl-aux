@@ -39,6 +39,7 @@ save_path = create_path_name(
     observation_feature_dimensions=0,
     dataset="OXFORDPETS",
     learn_weights=LEARN_WEIGHTS,
+    optimizer=OPTIMIZER,
 )
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -116,8 +117,14 @@ resnet_model   = resnet50(weights=weights)
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 wamal_main_model = WamalWrapper(resnet_model,num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
 wamal_main_model = wamal_main_model.to(device)
-#optimizer = optim.SGD(wamal_main_model.parameters(), lr=PRIMARY_LR)
-optimizer = optim.Adam(wamal_main_model.parameters(), lr=PRIMARY_LR)
+
+if OPTIMIZER == "SGD":
+    optimizer = optim.SGD(wamal_main_model.parameters(), lr=PRIMARY_LR)
+elif OPTIMIZER == "ADAM":
+    optimizer = optim.Adam(wamal_main_model.parameters(), lr=PRIMARY_LR, weight_decay=5e-4)
+else:
+    raise ValueError(f"Optimizer {OPTIMIZER} not recognized. Use 'SGD' or 'ADAM'.")
+
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
 vgg_lr = PRIMARY_LR # define learning rate for second-derivative step (theta_1^+)
