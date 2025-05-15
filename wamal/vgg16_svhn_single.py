@@ -28,6 +28,7 @@ GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
+FULL_DATASET = TrueOPTIMIZER = "SGD"
 
 save_path = create_path_name(
     agent_type="WAMAL-SINGLE",
@@ -38,7 +39,7 @@ save_path = create_path_name(
     dataset="SVHN",
     learn_weights=LEARN_WEIGHTS,
     optimizer=OPTIMIZER,
-)
+    full_dataset=FULL_DATASET,)
 device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
 train_set = SVHN(

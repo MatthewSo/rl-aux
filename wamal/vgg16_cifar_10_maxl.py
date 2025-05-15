@@ -26,7 +26,8 @@ GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
-
+OPTIMIZER = "SGD"
+FULL_DATASET = True
 save_path = create_path_name(
     agent_type="WAMAL-MAXL",
     primary_model_type="VGG",

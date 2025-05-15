@@ -23,7 +23,8 @@ SCHEDULER_STEP_SIZE = 50
 SCHEDULER_GAMMA = 0.5
 AUX_WEIGHT = 0
 TRAIN_RATIO = 1
-LEARN_WEIGHTS = True
+OPTIMIZER = "SGD"
+FULL_DATASET = TrueLEARN_WEIGHTS = True
 
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 

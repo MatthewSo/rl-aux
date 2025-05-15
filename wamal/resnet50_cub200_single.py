@@ -28,8 +28,8 @@ GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
-OPTIMIZER="SGD"
-
+OPTIMIZER = "SGD"
+FULL_DATASET = True
 save_path = create_path_name(
     agent_type="WAMAL-SINGLE",
     primary_model_type="RESNET50",
@@ -39,7 +39,7 @@ save_path = create_path_name(
     dataset="CUB200",
     learn_weights=LEARN_WEIGHTS,
     optimizer=OPTIMIZER,
-)
+    full_dataset=FULL_DATASET,)
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 train_set = CUB200(
@@ -53,7 +53,8 @@ test_set = CUB200(
     transform=common_test_tf,
 )
 
-train_set = PerClassCap(train_set)
+if not FULL_DATASET:
+    train_set = PerClassCap(train_set)
 
 
 ###  DON'T CHANGE THIS PART ###
