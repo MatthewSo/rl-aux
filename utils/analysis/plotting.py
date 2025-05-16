@@ -109,7 +109,7 @@ def best_test_accuracy_first_n_epochs(
     suffix = "auxiliary" if aux else "primary"
 
 
-    best_accuries_per_label = defaultdict(0)
+    best_accuries_per_label = defaultdict(lambda: float("-inf"))
 
     for epoch_data, label in runs:
         # Examine at most the first n_epochs entries for this run
