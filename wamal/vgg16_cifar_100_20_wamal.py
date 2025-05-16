@@ -41,6 +41,7 @@ save_path = create_path_name(
     learn_weights=LEARN_WEIGHTS,
     optimizer=OPTIMIZER,
     full_dataset=FULL_DATASET,
+    learning_rate=PRIMARY_LR,
     range=RANGE,
 )
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
