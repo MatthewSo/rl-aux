@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import matplotlib.pyplot as plt
 from typing import Sequence, Tuple, Iterable, Optional, Dict
 
@@ -106,21 +108,16 @@ def best_test_accuracy_first_n_epochs(
         raise ValueError("n_epochs must be a positive integer.")
     suffix = "auxiliary" if aux else "primary"
 
-    best_label: Optional[str] = None
-    best_acc: float = float("-inf")
+
+    best_accuries_per_label = defaultdict(0)
 
     for epoch_data, label in runs:
         # Examine at most the first n_epochs entries for this run
         window = epoch_data[:n_epochs]
 
         for e in window:
-            acc = getattr(e, f"test_accuracy_{suffix}", float("nan"))
-            if acc is not None and acc == acc:  # skip NaN
-                if acc > best_acc:
-                    best_acc = acc
-                    best_label = label
+            acc = getattr(e, f"test_accuracy_{suffix}")
+            if acc > best_accuries_per_label[label]:
+                best_accuries_per_label[label] = acc
 
-    if best_label is None:
-        raise ValueError("No valid accuracy values found in the supplied runs.")
-
-    return best_label, best_acc
+    return best_accuries_per_label
