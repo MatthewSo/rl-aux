@@ -269,6 +269,7 @@ class LabelWeightWrapper(nn.Module):
     def load(cls,
              path: str | Path,
              backbone_fn: Callable[[], nn.Module] | None = None,
+             initialization_args: dict | None = None,
              map_location: str | torch.device | None = None) -> "LabelWeightWrapper":
         ckpt = torch.load(path, map_location=map_location)
 
@@ -277,7 +278,7 @@ class LabelWeightWrapper(nn.Module):
         else:
             mod  = importlib.import_module(ckpt["backbone_module"])
             cls_ = getattr(mod, ckpt["backbone_name"])
-            backbone = cls_()
+            backbone = cls_(**(initialization_args or {}))
         model = cls(backbone=backbone,
                     num_primary=ckpt["num_primary"],
                     num_auxiliary=ckpt["num_auxiliary"],
