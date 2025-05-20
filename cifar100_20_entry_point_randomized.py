@@ -1,5 +1,4 @@
 import subprocess
-from tabnanny import verbose
 
 import torch
 from torch import nn
@@ -7,7 +6,7 @@ from torch import nn
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import cifar_trans_train, cifar_trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
-from networks.ppo.ppo import get_ppo_agent, get_fast_dummy_ppo_agent
+from networks.ppo.ppo import  get_fast_dummy_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location

@@ -15,11 +15,39 @@ def inner_sgd_update(model, loss, lr):
     grads = torch.autograd.grad(loss, model.parameters(), create_graph=True)
     return OrderedDict((n, w - lr * g) for (n, w), g in zip(fast.items(), grads))
 
-def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, train_batch, test_batch, batch_size, model, label_network, optimizer, scheduler, gen_optimizer, gen_scheduler, num_axuiliary_classes, num_primary_classes, save_path, use_learned_weights, model_lr, val_range, skip_mal=False):
+
+def train_wamal_network(device, dataloader_train, dataloader_test,
+                         total_epoch, train_batch, test_batch, batch_size,
+                         model, label_network, optimizer, scheduler,
+                         gen_optimizer, gen_scheduler,
+                         num_axuiliary_classes, num_primary_classes,
+                         save_path, use_learned_weights, model_lr,
+                         val_range, skip_mal=False,
+                         use_auxiliary_set=False, aux_split=0.1):
+
     epoch_performances = []
     avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
     best_training_performance = 0
     k=0
+
+    if use_auxiliary_set:
+        full_ds = dataloader_train.dataset
+        aux_len = int(aux_split * len(full_ds))
+        train_len = len(full_ds) - aux_len
+        train_ds, aux_ds = torch.utils.data.random_split(
+            full_ds, [train_len, aux_len],
+            generator=torch.Generator().manual_seed(42))
+
+        dataloader_train = torch.utils.data.DataLoader(
+            train_ds, batch_size=batch_size, shuffle=True, drop_last=True,
+            num_workers=getattr(dataloader_train, "num_workers", 0))
+        dataloader_aux = torch.utils.data.DataLoader(
+            aux_ds, batch_size=batch_size, shuffle=True, drop_last=True,
+            num_workers=getattr(dataloader_train, "num_workers", 0))
+    else:
+        dataloader_aux = dataloader_train
+
+
     for index in range(total_epoch):
         cost = np.zeros(4, dtype=np.float32)
 
@@ -83,7 +111,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test, total_epoch, 
             avg_cost[index][0:3] += cost[0:3] / train_batch
 
         # evaluating training data (meta-training step, update on theta_2)
-        cifar100_train_dataset = iter(dataloader_train)
+        cifar100_train_dataset = iter(dataloader_aux)
         for i in range(train_batch):
             if skip_mal:
                 continue
