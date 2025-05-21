@@ -119,8 +119,8 @@ def train_auxilearn_network(
                 aux_optimizer.step(
                     val_loss   = val_loss_meta,
                     train_loss = train_loss_meta,
-                    aux_params = label_network.parameters(),
-                    parameters = model.parameters(),
+                    aux_params = list(label_network.parameters()),  # materialise once
+                    parameters = list(model.parameters()),          # materialise once
                 )
 
         avg_cost[epoch][0] = cost_epoch[0]
