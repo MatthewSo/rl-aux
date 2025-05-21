@@ -35,7 +35,7 @@ USE_AUXILIARY_SET = True
 AUXILIARY_SET_RATIO = 0.2
 
 save_path = create_path_name(
-    agent_type="WAMAL",
+    agent_type="WAMAL_AUXILEARN",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
