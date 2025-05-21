@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 
 class PerClassCap(Dataset):
     def __init__(self, base_ds, max_per_class: int = 30,
-                 seed: int | None = None, keep_order: bool = False):
+                 seed = None, keep_order: bool = False):
         super().__init__()
         self.base_ds = base_ds
         self.max_per_class = max_per_class
