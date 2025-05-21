@@ -33,7 +33,7 @@ RANGE = 5
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = True
-BATCH_FRACTION = None
+BATCH_FRACTION = 0.1
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -51,7 +51,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 
 cifar100_train = CIFAR100(
     root="./data/cifar100",
