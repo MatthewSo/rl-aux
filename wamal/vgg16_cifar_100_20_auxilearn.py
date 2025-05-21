@@ -89,6 +89,10 @@ save_parameter_dict(
         "gen_optimizer_weight_decay": GEN_OPTIMIZER_WEIGHT_DECAY,
         "gen_optimizer_lr": GEN_OPTIMIZER_LR,
         "train_ratio": TRAIN_RATIO,
+        "optimizer": OPTIMIZER,
+        "full_dataset": FULL_DATASET,
+        "use_auxiliary_set": USE_AUXILIARY_SET,
+        "aux_set_ratio": AUXILIARY_SET_RATIO,
     }
 )
 
@@ -132,4 +136,4 @@ train_auxilearn_network(device=device, dataloader_train=dataloader_train, datalo
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE)
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET, aux_split=AUXILIARY_SET_RATIO)

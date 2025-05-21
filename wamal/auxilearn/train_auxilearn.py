@@ -31,9 +31,9 @@ def train_auxilearn_network(
         use_learned_weights,
         model_lr,
         val_range,
+        use_auxiliary_set,
+        aux_split,
         skip_mal=False,
-        use_auxiliary_set=False,
-        aux_split=0.1,
         aux_params_update_every=1,   # new: meta-step frequency
 ):
     aux_optimizer = MetaOptimizer(gen_optimizer, hpo_lr=gen_optimizer.param_groups[0]['lr'])

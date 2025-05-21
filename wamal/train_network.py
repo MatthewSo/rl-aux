@@ -22,8 +22,8 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
                          gen_optimizer, gen_scheduler,
                          num_axuiliary_classes, num_primary_classes,
                          save_path, use_learned_weights, model_lr,
-                         val_range, skip_mal=False,
-                         use_auxiliary_set=False, aux_split=0.1):
+                         val_range, use_auxiliary_set, aux_split, skip_mal=False,
+):
 
     epoch_performances = []
     avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
