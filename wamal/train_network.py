@@ -56,6 +56,11 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
         eff_train_batches = train_batch
         if batch_frac is not None:
             eff_train_batches = max(1, int(np.ceil(train_batch * batch_frac)))
+        print("printing")
+        print(eff_train_batches)
+        print(train_batch)
+        print(index)
+
 
         # drop the learning rate with the same strategy in the multi-task network
         # note: not necessary to be consistent with the multi-task network's parameter,
