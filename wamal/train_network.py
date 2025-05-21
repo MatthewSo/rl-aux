@@ -23,7 +23,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
                          num_axuiliary_classes, num_primary_classes,
                          save_path, use_learned_weights, model_lr,
                          val_range, use_auxiliary_set, aux_split, skip_mal=False, normalize_batch_weights=False,
-                        batch_frac=0.5
+                        batch_frac=None
 ):
 
     epoch_performances = []
@@ -50,17 +50,15 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
 
     train_batch = len(dataloader_train)
     test_batch = len(dataloader_test)
+    aux_batch = len(dataloader_aux)
 
     for index in range(total_epoch):
         cost = np.zeros(4, dtype=np.float32)
         eff_train_batches = train_batch
+        eff_aux_batches = aux_batch
         if batch_frac is not None:
             eff_train_batches = max(1, int(np.ceil(train_batch * batch_frac)))
-        print("printing")
-        print(eff_train_batches)
-        print(train_batch)
-        print(index)
-
+            eff_aux_batches = max(1, int(np.ceil(aux_batch * batch_frac)))
 
         # drop the learning rate with the same strategy in the multi-task network
         # note: not necessary to be consistent with the multi-task network's parameter,
@@ -70,9 +68,9 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
 
         # evaluate training data (training-step, update on theta_1)
         model.train()
-        cifar100_train_dataset = iter(dataloader_train)
+        train_iter = iter(dataloader_train)
         for i in range(eff_train_batches):
-            train_data, train_label = next(cifar100_train_dataset)
+            train_data, train_label = next(train_iter)
             train_label = train_label.type(torch.LongTensor)
             train_data, train_label = train_data.to(device), train_label.to(device)
             train_pred1, train_pred2 = model(train_data)
@@ -124,11 +122,11 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
             avg_cost[index][0:3] += cost[0:3] / eff_train_batches
 
         # evaluating training data (meta-training step, update on theta_2)
-        cifar100_train_dataset = iter(dataloader_aux)
-        for i in range(eff_train_batches):
+        aux_iter = iter(dataloader_aux)
+        for i in range(eff_aux_batches):
             if skip_mal:
                 continue
-            train_data, train_label = next(cifar100_train_dataset)
+            train_data, train_label = next(aux_iter)
             train_label = train_label.type(torch.LongTensor)
             train_data, train_label = train_data.to(device), train_label.to(device)
 
