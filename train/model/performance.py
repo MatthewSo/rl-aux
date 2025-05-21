@@ -12,6 +12,7 @@ class EpochPerformance():
     test_accuracy_primary: float
     test_loss_auxiliary: float
     test_accuracy_auxiliary: float
+    batch_id: int = 0
 
     def __str__(self):
         return f"Epoch {self.epoch}: " \
@@ -22,4 +23,5 @@ class EpochPerformance():
                f"Test Loss (Primary): {self.test_loss_primary:.4f}, " \
                f"Test Accuracy (Primary): {self.test_accuracy_primary:.4f}, " \
                f"Test Loss (Auxiliary): {self.test_loss_auxiliary:.4f}, " \
-               f"Test Accuracy (Auxiliary): {self.test_accuracy_auxiliary:.4f}"
+               f"Test Accuracy (Auxiliary): {self.test_accuracy_auxiliary:.4f}"\
+               f"Batch ID: {self.batch_id}"

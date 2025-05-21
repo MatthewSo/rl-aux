@@ -85,6 +85,7 @@ def train_auxilary_agent(primary_model, rl_model, device, env, test_loader, batc
                 test_loss_auxiliary=0,
                 test_accuracy_primary=test_acc1,
                 test_accuracy_auxiliary=0,
+                batch_id=
             )
             epoch_performances.append(epoch_performance)
 

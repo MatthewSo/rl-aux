@@ -33,6 +33,8 @@ FULL_DATASET = True
 RANGE = 15
 USE_AUXILIARY_SET = True
 AUXILIARY_SET_RATIO = 0.2
+NORMALIZE_BATCH = False
+BATCH_FRACTION = None
 
 save_path = create_path_name(
     agent_type="WAMAL_AUXILEARN",
@@ -47,6 +49,8 @@ save_path = create_path_name(
     learning_rate=PRIMARY_LR,
     range=RANGE,
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
+    normalize_batch=NORMALIZE_BATCH,
+    batch_fraction=BATCH_FRACTION,
 )
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 

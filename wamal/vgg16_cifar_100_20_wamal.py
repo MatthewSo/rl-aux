@@ -32,6 +32,8 @@ FULL_DATASET = True
 RANGE = 15
 USE_AUXILIARY_SET = True
 AUXILIARY_SET_RATIO = 0.2
+NORMALIZE_BATCH = False
+BATCH_FRACTION = None
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -46,6 +48,8 @@ save_path = create_path_name(
     learning_rate=PRIMARY_LR,
     range=RANGE,
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
+    normalize_batch=NORMALIZE_BATCH,
+    batch_fraction=BATCH_FRACTION,
 )
 device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
@@ -135,4 +139,4 @@ train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET, aux_split=AUXILIARY_SET_RATIO)
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET, aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION)

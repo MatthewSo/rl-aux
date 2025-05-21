@@ -23,6 +23,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
                          num_axuiliary_classes, num_primary_classes,
                          save_path, use_learned_weights, model_lr,
                          val_range, use_auxiliary_set, aux_split, skip_mal=False, normalize_batch_weights=False,
+                        batch_frac=0.5
 ):
 
     epoch_performances = []
@@ -50,6 +51,9 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
 
     for index in range(total_epoch):
         cost = np.zeros(4, dtype=np.float32)
+        eff_train_batches = train_batch
+        if batch_frac is not None:
+            eff_train_batches = max(1, int(np.ceil(train_batch * batch_frac)))
 
         # drop the learning rate with the same strategy in the multi-task network
         # note: not necessary to be consistent with the multi-task network's parameter,
@@ -60,7 +64,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
         # evaluate training data (training-step, update on theta_1)
         model.train()
         cifar100_train_dataset = iter(dataloader_train)
-        for i in range(train_batch):
+        for i in range(eff_train_batches):
             train_data, train_label = next(cifar100_train_dataset)
             train_label = train_label.type(torch.LongTensor)
             train_data, train_label = train_data.to(device), train_label.to(device)
@@ -110,11 +114,11 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
             cost[1] = train_acc1
             cost[2] = cos_mean
             k = k + 1
-            avg_cost[index][0:3] += cost[0:3] / train_batch
+            avg_cost[index][0:3] += cost[0:3] / eff_train_batches
 
         # evaluating training data (meta-training step, update on theta_2)
         cifar100_train_dataset = iter(dataloader_aux)
-        for i in range(train_batch):
+        for i in range(eff_train_batches):
             if skip_mal:
                 continue
             train_data, train_label = next(cifar100_train_dataset)
@@ -179,7 +183,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
             # accuracy on primary task after one update
             cost[2] = torch.mean(train_loss1).item()
             cost[3] = train_acc1
-            avg_cost[index][3:7] += cost[0:4] / train_batch
+            avg_cost[index][3:7] += cost[0:4] / eff_train_batches
 
         # evaluate on test data
         model.eval()
@@ -214,6 +218,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
             test_loss_auxiliary=0,
             test_accuracy_primary=avg_cost[index][8],
             test_accuracy_auxiliary=0,
+            batch_id=eff_train_batches * (index + 1),
         )
         epoch_performances.append(epoch_performance)
 
