@@ -57,12 +57,15 @@ device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 cifar100_train = CIFAR100(
     root="./data/cifar100",
     train=True,
-    transform=cifar_trans_train
+    transform=cifar_trans_train,
+    download=True
 )
 cifar100_test= CIFAR100(
     root="./data/cifar100",
     train=False,
-    transform=cifar_trans_test)
+    transform=cifar_trans_test,
+    download=True
+)
 
 
 train_set = CoarseLabelCIFAR100(
