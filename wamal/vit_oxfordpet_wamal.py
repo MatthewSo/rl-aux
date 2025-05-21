@@ -32,10 +32,10 @@ GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
-OPTIMIZER = "SGD"
+OPTIMIZER = "ADAM"
 FULL_DATASET = True
 RANGE = 5
-USE_AUXILIARY_SET = True
+USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
 BATCH_FRACTION = None
@@ -56,7 +56,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
 train_set = OxfordIIITPet(
     root="./data/oxford_pet",
