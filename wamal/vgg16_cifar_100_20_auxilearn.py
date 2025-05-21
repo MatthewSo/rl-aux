@@ -9,6 +9,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.auxilearn.train_auxilearn import train_auxilearn_network
 from wamal.networks.vgg_16 import SimplifiedVGG16
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
@@ -47,7 +48,7 @@ save_path = create_path_name(
     range=RANGE,
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
 )
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 cifar100_train = CIFAR100(
     root="./data/cifar100",
@@ -126,7 +127,7 @@ scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMM
 avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
 vgg_lr = PRIMARY_LR # define learning rate for second-derivative step (theta_1^+)
 
-train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader_test=dataloader_test,
+train_auxilearn_network(device=device, dataloader_train=dataloader_train, dataloader_test=dataloader_test,
                     total_epoch=total_epoch, train_batch=train_batch, test_batch=test_batch, batch_size=BATCH_SIZE,
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
