@@ -19,9 +19,9 @@ PRIMARY_CLASS = 20
 AUXILIARY_CLASS = 100
 SKIP_MAL = False
 LEARN_WEIGHTS = True
-TOTAL_EPOCH = 2000
+TOTAL_EPOCH = 200
 PRIMARY_LR = 0.01 # CHANGE
-STEP_SIZE = 500
+STEP_SIZE = 50
 IMAGE_SHAPE = (3, 32, 32)
 GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
@@ -32,8 +32,8 @@ FULL_DATASET = True
 RANGE = 5
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
-NORMALIZE_BATCH = False
-BATCH_FRACTION = 0.1
+NORMALIZE_BATCH = True
+BATCH_FRACTION = None
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -146,4 +146,5 @@ train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET, aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION)
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET,
+                    aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION, normalize_batch_weights=NORMALIZE_BATCH)
