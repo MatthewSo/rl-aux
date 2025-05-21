@@ -22,7 +22,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
                          gen_optimizer, gen_scheduler,
                          num_axuiliary_classes, num_primary_classes,
                          save_path, use_learned_weights, model_lr,
-                         val_range, use_auxiliary_set, aux_split, skip_mal=False,
+                         val_range, use_auxiliary_set, aux_split, skip_mal=False, normalize_batch_weights=False,
 ):
 
     epoch_performances = []
@@ -87,6 +87,8 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
 
             if use_learned_weights:
                 weight_factors = torch.pow(2.0, ( 2* val_range * aux_weight) - val_range)
+                if normalize_batch_weights:
+                    weight_factors = weight_factors / weight_factors.mean()
                 aux_loss = torch.mean(train_loss2 * weight_factors)
 
             else:
@@ -136,6 +138,8 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
 
             if use_learned_weights:
                 weight_factors = torch.pow(2.0, (val_range * 2) * aux_weight - val_range)
+                if normalize_batch_weights:
+                    weight_factors = weight_factors / weight_factors.mean()
                 aux_loss = torch.mean(train_loss2 * weight_factors)
 
             else:
