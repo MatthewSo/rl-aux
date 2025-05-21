@@ -61,10 +61,12 @@ device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 train_set = OxfordIIITPet(
     root="./data/oxford_pet",
     train=True,
+    download=True,
 )
 test_set = OxfordIIITPet(
     root="./data/oxford_pet",
     train=False,
+    download=True,
 )
 
 if not FULL_DATASET:
