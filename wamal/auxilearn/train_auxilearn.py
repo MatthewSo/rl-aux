@@ -113,12 +113,12 @@ def train_auxilearn_network(
                     batch_iter_aux = iter(dataloader_aux)
                     x_aux, y_aux   = next(batch_iter_aux)
 
-                with torch.no_grad():
-                    val_loss, _, _ = batch_losses(x_aux, y_aux)
+                train_loss_meta, _, _ = batch_losses(x_tr,  y_tr)   # lower-level
+                val_loss_meta,   _, _ = batch_losses(x_aux, y_aux)  # upper-level
 
                 aux_optimizer.step(
-                    val_loss   = val_loss,
-                    train_loss = loss_joint,
+                    val_loss   = val_loss_meta,
+                    train_loss = train_loss_meta,
                     aux_params = label_network.parameters(),
                     parameters = model.parameters(),
                 )
