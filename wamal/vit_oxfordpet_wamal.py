@@ -37,7 +37,7 @@ FULL_DATASET = True
 RANGE = 5
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
-NORMALIZE_BATCH = True
+NORMALIZE_BATCH = False
 BATCH_FRACTION = None
 
 save_path = create_path_name(
@@ -56,7 +56,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:5" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
 
 train_set = OxfordIIITPet(
     root="./data/oxford_pet",
