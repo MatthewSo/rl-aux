@@ -9,6 +9,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.auxilearn.train_auxilearn import train_auxilearn_network
 from wamal.networks.vit import get_vit, vit_collate
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
@@ -56,7 +57,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 train_set = OxfordIIITPet(
     root="./data/oxford_pet",
@@ -149,9 +150,9 @@ scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMM
 avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
 vgg_lr = PRIMARY_LR # define learning rate for second-derivative step (theta_1^+)
 
-train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader_test=dataloader_test,
-                    total_epoch=total_epoch, train_batch=train_batch, test_batch=test_batch, batch_size=BATCH_SIZE,
-                    model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
-                    gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
-                    num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET, aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION)
+train_auxilearn_network(device=device, dataloader_train=dataloader_train, dataloader_test=dataloader_test,
+                        total_epoch=total_epoch, train_batch=train_batch, test_batch=test_batch, batch_size=BATCH_SIZE,
+                        model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
+                        gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
+                        num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
+                        save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET, aux_split=AUXILIARY_SET_RATIO)
