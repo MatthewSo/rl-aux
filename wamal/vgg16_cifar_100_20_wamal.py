@@ -19,9 +19,9 @@ PRIMARY_CLASS = 20
 AUXILIARY_CLASS = 100
 SKIP_MAL = False
 LEARN_WEIGHTS = True
-TOTAL_EPOCH = 2000
+TOTAL_EPOCH = 200
 PRIMARY_LR = 0.01 # CHANGE
-STEP_SIZE = 500
+STEP_SIZE = 50
 IMAGE_SHAPE = (3, 32, 32)
 GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
@@ -33,7 +33,7 @@ RANGE = 5
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
-BATCH_FRACTION = 0.1
+BATCH_FRACTION = None
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -51,7 +51,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 cifar100_train = CIFAR100(
     root="./data/cifar100",
