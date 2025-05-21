@@ -99,8 +99,12 @@ def train_auxilearn_network(
     for epoch in range(total_epoch):
 
         # effective number of batches this epoch
-        eff_train_batches = max(1, ceil(train_batch * batch_frac))
-        eff_aux_batches   = max(1, ceil(aux_batch   * batch_frac))
+        eff_train_batches = train_batch
+        eff_aux_batches   = aux_batch
+
+        if batch_frac is not None:
+            eff_train_batches = max(1, ceil(train_batch * batch_frac))
+            eff_aux_batches   = max(1, ceil(aux_batch   * batch_frac))
 
         # LR drop every 50 epochs (matches original code)
         if (epoch + 1) % 50 == 0:
