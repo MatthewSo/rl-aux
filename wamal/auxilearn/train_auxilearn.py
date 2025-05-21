@@ -54,6 +54,8 @@ def train_auxilearn_network(
     else:
         dataloader_aux = dataloader_train
 
+    train_batch = len(dataloader_train)
+    test_batch = len(dataloader_test)
 
     def batch_losses(data, targets):
         targets = targets.long().to(device)

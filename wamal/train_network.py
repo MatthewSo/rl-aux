@@ -48,6 +48,8 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
     else:
         dataloader_aux = dataloader_train
 
+    train_batch = len(dataloader_train)
+    test_batch = len(dataloader_test)
 
     for index in range(total_epoch):
         cost = np.zeros(4, dtype=np.float32)
