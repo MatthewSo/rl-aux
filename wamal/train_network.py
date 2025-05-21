@@ -32,6 +32,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
     k=0
 
     if use_auxiliary_set:
+        src_collate = getattr(dataloader_train, "collate_fn", None)
         full_ds = dataloader_train.dataset
         aux_len = int(aux_split * len(full_ds))
         train_len = len(full_ds) - aux_len
@@ -41,10 +42,14 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
 
         dataloader_train = torch.utils.data.DataLoader(
             train_ds, batch_size=batch_size, shuffle=True, drop_last=True,
-            num_workers=getattr(dataloader_train, "num_workers", 0))
+            num_workers=getattr(dataloader_train, "num_workers", 0),
+            **({"collate_fn": src_collate} if src_collate is not None else {})
+        )
         dataloader_aux = torch.utils.data.DataLoader(
             aux_ds, batch_size=batch_size, shuffle=True, drop_last=True,
-            num_workers=getattr(dataloader_train, "num_workers", 0))
+            num_workers=getattr(dataloader_train, "num_workers", 0),
+            **({"collate_fn": src_collate} if src_collate is not None else {})
+        )
     else:
         dataloader_aux = dataloader_train
 
