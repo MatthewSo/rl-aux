@@ -32,7 +32,7 @@ RANGE = 5
 FULL_DATASET = True
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
-NORMALIZE_BATCH = True
+NORMALIZE_BATCH = False
 BATCH_FRACTION = None
 
 save_path = create_path_name(
