@@ -20,7 +20,7 @@ AUXILIARY_CLASS = 100
 SKIP_MAL = False
 LEARN_WEIGHTS = True
 TOTAL_EPOCH = 200
-PRIMARY_LR = 0.00012 # CHANGE
+PRIMARY_LR = 0.00005 # CHANGE
 STEP_SIZE = 50
 IMAGE_SHAPE = (3, 32, 32)
 GAMMA = 0.5
@@ -51,7 +51,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 cifar100_train = CIFAR100(
     root="./data/cifar100",
