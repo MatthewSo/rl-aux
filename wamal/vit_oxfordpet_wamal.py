@@ -24,9 +24,9 @@ PRIMARY_CLASS = 37
 AUXILIARY_CLASS = 185
 SKIP_MAL = False
 LEARN_WEIGHTS = True
-TOTAL_EPOCH = 750
-PRIMARY_LR = 5e-4
-STEP_SIZE = 500
+TOTAL_EPOCH = 75
+PRIMARY_LR = 5e-4 / 100
+STEP_SIZE = 50
 IMAGE_SHAPE = (3, 224, 224)
 GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
@@ -38,7 +38,7 @@ RANGE = 5
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
-BATCH_FRACTION = 0.1
+BATCH_FRACTION = None
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -56,7 +56,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:7" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 train_set = OxfordIIITPet(
     root="./data/oxford_pet",

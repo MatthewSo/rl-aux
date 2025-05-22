@@ -24,7 +24,7 @@ AUXILIARY_CLASS = 505
 SKIP_MAL = False
 LEARN_WEIGHTS = True
 TOTAL_EPOCH = 75
-PRIMARY_LR = 5e-4
+PRIMARY_LR = 5e-4 / 100
 STEP_SIZE = 50
 IMAGE_SHAPE = (3, 224, 224)
 GAMMA = 0.5
@@ -33,7 +33,7 @@ GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "ADAM"
 FULL_DATASET = True
-RANGE = 5.0
+RANGE = 5
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
@@ -55,7 +55,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 train_set = Food101(
     root="./data/food101",
