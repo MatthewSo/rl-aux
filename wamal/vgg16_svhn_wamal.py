@@ -27,7 +27,7 @@ GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
-OPTIMIZER = "SGD"
+OPTIMIZER = "ADAM"
 RANGE = 5
 FULL_DATASET = True
 USE_AUXILIARY_SET = False
@@ -51,7 +51,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
 
 train_set = SVHN(
     root="./data/svhn",
@@ -125,7 +125,12 @@ test_batch = len(dataloader_test)
 # define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
 wamal_main_model = WamalWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS),num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
 wamal_main_model = wamal_main_model.to(device)
-optimizer = optim.SGD(wamal_main_model.parameters(), lr=PRIMARY_LR)
+if OPTIMIZER == "SGD":
+    optimizer = optim.SGD(wamal_main_model.parameters(), lr=PRIMARY_LR)
+elif OPTIMIZER == "ADAM":
+    optimizer = optim.Adam(wamal_main_model.parameters(), lr=PRIMARY_LR, weight_decay=5e-4)
+else:
+    raise ValueError(f"Optimizer {OPTIMIZER} not recognized. Use 'SGD' or 'ADAM'.")
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
 vgg_lr = PRIMARY_LR # define learning rate for second-derivative step (theta_1^+)
