@@ -32,7 +32,7 @@ RANGE = 5
 FULL_DATASET = True
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
-NORMALIZE_BATCH = False
+NORMALIZE_BATCH = True
 BATCH_FRACTION = None
 
 save_path = create_path_name(
@@ -51,7 +51,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 train_set = SVHN(
     root="./data/svhn",
