@@ -35,13 +35,13 @@ TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
 RANGE = 5.0
-USE_AUXILIARY_SET = True
+USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
 BATCH_FRACTION = None
 
 save_path = create_path_name(
-    agent_type="WAMAL",
+    agent_type="WAMAL_AUXILEARN",
     primary_model_type="VIT",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
@@ -56,7 +56,7 @@ save_path = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
 )
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 train_set = Food101(
     root="./data/food101",
