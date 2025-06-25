@@ -77,7 +77,7 @@ optimizer = optim.SGD(model.parameters(), lr=PRIMARY_LR, momentum=0.9, weight_de
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
 gamma_params = nn.ParameterList([
-    nn.Parameter(torch.tensor(init_gamma, device=device))
+    nn.Parameter(torch.tensor(INIT_GAMMA_RAW, device=DEVICE))
     for _ in model.parameters()
 ])
 
