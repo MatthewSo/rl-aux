@@ -25,7 +25,7 @@ from wamal.networks.utils import model_fit
 def train_meta_l1_network(
         device: torch.device,
         dataloader_train: DataLoader,
-        dataloader_val:   DataLoader | None,
+        dataloader_val:   DataLoader,
         dataloader_test:  DataLoader,
         total_epoch: int,
         batch_size: int,
@@ -39,7 +39,7 @@ def train_meta_l1_network(
         init_gamma: float = 0.0,
         learned_range: float = 2.0,
         aux_split: float = 0.2,
-        batch_frac: float | None = None,
+        batch_frac = None,
         skip_meta: bool = False):
 
 
