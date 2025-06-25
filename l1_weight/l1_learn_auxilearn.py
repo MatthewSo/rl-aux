@@ -36,6 +36,7 @@ def train_meta_l1_network(
         gamma_scheduler,
         num_primary_classes: int,
         save_path: str,
+        gamma_params,
         init_gamma: float = 0.0,
         learned_range: float = 2.0,
         aux_split: float = 0.2,
@@ -63,13 +64,6 @@ def train_meta_l1_network(
     train_batches = len(dataloader_train)
     val_batches   = len(dataloader_val)
     test_batches  = len(dataloader_test)
-
-    gamma_params = nn.ParameterList([
-        nn.Parameter(torch.tensor(init_gamma, device=device))
-        for _ in model.parameters()
-    ])
-
-    gamma_optimizer.add_param_group({"params": gamma_params})
 
     meta_optimizer = MetaOptimizer(
         gamma_optimizer,

@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
+import torch.nn as nn
 
 from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
 from datasets.transforms import cifar_trans_train, cifar_trans_test
@@ -75,7 +76,13 @@ model = SimplifiedVGG16(device=DEVICE, num_primary_classes=PRIMARY_CLASS).to(DEV
 optimizer = optim.SGD(model.parameters(), lr=PRIMARY_LR, momentum=0.9, weight_decay=5e-4)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
-gamma_optimizer = optim.Adam([], lr=1e-3)
+gamma_params = nn.ParameterList([
+    nn.Parameter(torch.tensor(init_gamma, device=device))
+    for _ in model.parameters()
+])
+
+INIT_GAMMA_RAW = torch.tensor(INIT_GAMMA_RAW, device=DEVICE)
+gamma_optimizer = optim.Adam(gamma_params, lr=0.01, weight_decay=5e-4)
 gamma_scheduler = optim.lr_scheduler.StepLR(gamma_optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
 train_meta_l1_network(
@@ -85,6 +92,7 @@ train_meta_l1_network(
     dataloader_test     = loader_test,
     total_epoch         = TOTAL_EPOCH,
     batch_size          = BATCH_SIZE,
+    gamma_params        = gamma_params,
     model               = model,
     optimizer           = optimizer,
     scheduler           = scheduler,
