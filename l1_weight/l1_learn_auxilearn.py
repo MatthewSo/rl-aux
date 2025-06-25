@@ -87,7 +87,10 @@ def train_meta_l1_network(
         logits = model(x)
         task   = _task_loss(logits, y)
         reg    = _l1_reg()
-        train_loss = task + reg        # inner loss
+        train_loss = task + reg
+        # check if skip meta and skip regularization
+        if skip_meta:
+            train_loss = task
         return train_loss, task, logits
 
     os.makedirs(save_path, exist_ok=True)
