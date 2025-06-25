@@ -88,7 +88,7 @@ def train_meta_l1_network(
         task   = _task_loss(logits, y)
         reg    = _l1_reg()
         train_loss = task + reg        # inner loss
-        return train_loss, task.detach(), logits
+        return train_loss, task, logits
 
     os.makedirs(save_path, exist_ok=True)
     epoch_performances: List[EpochPerformance] = []
@@ -115,11 +115,11 @@ def train_meta_l1_network(
                 x_tr, y_tr = next(train_iter)
 
             optimizer.zero_grad()
-            train_loss, task_detached, logits = batch_losses(x_tr, y_tr)
+            train_loss, task, logits = batch_losses(x_tr, y_tr)
             train_loss.backward()
             optimizer.step()
 
-            running["task"] += task_detached.item() / eff_train_batches
+            running["task"] += task.item() / eff_train_batches
             running["reg"]  += (_l1_reg().item()) / eff_train_batches
             if y_tr.dtype in (torch.long, torch.int64):
                 running["acc"] += (logits.argmax(dim=1) == y_tr.to(device)).float().mean().item() / eff_train_batches
