@@ -38,6 +38,8 @@ save_path = create_path_name(
     learning_rate         = PRIMARY_LR,
     range                 = LEARNED_RANGE,
     aux_set_ratio         = AUX_SET_RATIO,
+    normalize_batch       = False,
+    batch_fraction        = None,
 )
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 save_parameter_dict({
