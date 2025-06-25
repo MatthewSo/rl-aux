@@ -41,7 +41,9 @@ def train_meta_l1_network(
         learned_range: float = 2.0,
         aux_split: float = 0.2,
         batch_frac = None,
-        skip_meta: bool = False):
+        skip_meta: bool = False,
+        skip_regularization: bool = False,
+):
 
 
     if dataloader_val is None:
@@ -89,7 +91,7 @@ def train_meta_l1_network(
         reg    = _l1_reg()
         train_loss = task + reg
         # check if skip meta and skip regularization
-        if skip_meta:
+        if skip_regularization:
             train_loss = task
         return train_loss, task, logits
 
