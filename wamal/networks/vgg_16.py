@@ -12,6 +12,7 @@ import torch.utils.data.sampler as sampler
 from train.model.performance import EpochPerformance
 from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name
+import os
 
 
 class LabelGenerator(nn.Module):
@@ -190,4 +191,18 @@ class SimplifiedVGG16(nn.Module):
         t1_pred = self.classifier(g_block5.view(g_block5.size(0), -1))
 
         return t1_pred
+
+    def save(self, file_path: str):
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        torch.save(self.state_dict(), file_path)
+
+    @classmethod
+    def load(cls, file_path: str,
+             num_primary_classes: int,
+              device: torch.device = torch.device("cpu")):
+        model = cls(num_primary_classes=num_primary_classes, device=device)
+        model.load_state_dict(torch.load(file_path, map_location=device))
+        model.to(device)
+        model.eval()       # or `.train()` if you plan to keep training
+        return model
 
