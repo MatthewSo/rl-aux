@@ -20,14 +20,14 @@ TOTAL_EPOCH         = 200
 PRIMARY_LR          = 0.01
 STEP_SIZE           = 50
 GAMMA               = 0.5
-INIT_GAMMA_RAW      = 0.0
+INIT_GAMMA_RAW      = 1.0
 LEARNED_RANGE       = 2.0
 AUX_SET_RATIO       = 0.1
 DEVICE              = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 save_path = create_path_name(
-    agent_type            = "META_L1v2",
+    agent_type            = "META_L1v2_initgamma1",
     primary_model_type    = "VGG",
     train_ratio           = 1,
     aux_weight            = None,
