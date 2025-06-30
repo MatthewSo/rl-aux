@@ -43,6 +43,7 @@ def train_meta_l1_network(
         batch_frac = None,
         skip_meta: bool = False,
         skip_regularization: bool = False,
+        reg_weight: float = 1.0,
 ):
 
 
@@ -77,11 +78,11 @@ def train_meta_l1_network(
             return F.cross_entropy(logits, y, reduction="mean")
         return F.mse_loss(logits, y.float(), reduction="mean")
 
-    def _l1_reg():
+    def _l1_reg() -> torch.Tensor:
         reg = 0.0
         for g_raw, p in zip(gamma_params, model.parameters()):
-            g = F.softplus(g_raw * learned_range)  # ≥0
-            reg = reg + g * p.abs().mean()
+            g   = F.softplus(g_raw)          # element-wise γ, same shape as p
+            reg = reg + (g * p).abs().mean() # accumulate a single scalar
         return reg
 
     def batch_losses(x: torch.Tensor, y: torch.Tensor):

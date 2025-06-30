@@ -27,7 +27,7 @@ DEVICE              = torch.device("cuda:2" if torch.cuda.is_available() else "c
 
 
 save_path = create_path_name(
-    agent_type            = "SKIP_REG",
+    agent_type            = "SKIP_REGv2",
     primary_model_type    = "VGG",
     train_ratio           = 1,
     aux_weight            = None,
@@ -67,18 +67,18 @@ train_set = CoarseLabelCIFAR100(train_base)
 test_set  = CoarseLabelCIFAR100(test_base)
 
 loader_train = DataLoader(train_set, batch_size=BATCH_SIZE,
-                          shuffle=True,  num_workers=2, pin_memory=True)
+                          shuffle=True)
 loader_test  = DataLoader(test_set,  batch_size=BATCH_SIZE,
-                          shuffle=False, num_workers=2, pin_memory=True)
+                          shuffle=False)
 
 model = SimplifiedVGG16(device=DEVICE, num_primary_classes=PRIMARY_CLASS).to(DEVICE)
 
-optimizer = optim.SGD(model.parameters(), lr=PRIMARY_LR, momentum=0.9, weight_decay=5e-4)
+optimizer = optim.SGD(model.parameters(), lr=PRIMARY_LR)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
 gamma_params = nn.ParameterList([
-    nn.Parameter(torch.tensor(INIT_GAMMA_RAW, device=DEVICE))
-    for _ in model.parameters()
+    nn.Parameter(torch.full_like(p, INIT_GAMMA_RAW))   # shape == p.shape
+    for p in model.parameters()
 ])
 
 INIT_GAMMA_RAW = torch.tensor(INIT_GAMMA_RAW, device=DEVICE)
