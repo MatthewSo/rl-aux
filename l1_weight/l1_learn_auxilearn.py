@@ -20,7 +20,7 @@ from math import ceil
 
 from train.model.performance import EpochPerformance
 from utils.log import log_print
-from wamal.networks.utils import model_fit
+# from wamal.networks.utils import model_fit
 
 def train_meta_l1_network(
         device: torch.device,
@@ -47,7 +47,7 @@ def train_meta_l1_network(
 ):
 
 
-    if dataloader_val is None:
+    if dataloader_val is None and aux_split !=0:
         src_collate = getattr(dataloader_train, "collate_fn", None)
         full_ds     = dataloader_train.dataset
         val_len     = int(aux_split * len(full_ds))
@@ -80,10 +80,11 @@ def train_meta_l1_network(
 
     def _l1_reg() -> torch.Tensor:
         reg = 0.0
+        
         for g_raw, p in zip(gamma_params, model.parameters()):
             g   = F.softplus(g_raw)          # element-wise γ, same shape as p
             reg = reg + (g * p).abs().mean() # accumulate a single scalar
-        return reg
+        return reg/len([p for p in model.parameters()])
 
     def batch_losses(x: torch.Tensor, y: torch.Tensor):
         x, y = x.to(device), y.to(device)
@@ -172,7 +173,10 @@ def train_meta_l1_network(
         score = test_acc if not np.isnan(test_acc) else -test_task
         if score > best_score:
             best_score = score
-            model.save(os.path.join(save_path, "best_primary_model"))
+            def save_model(model, file_path: str):
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                torch.save(model.state_dict(), file_path)
+            save_model(model,os.path.join(save_path, "best_primary_model"))
             torch.save({"gamma_raw": [g.detach().cpu() for g in gamma_params]},
                        os.path.join(save_path, "best_gamma.pt"))
 
@@ -192,7 +196,7 @@ def train_meta_l1_network(
         with open(os.path.join(save_path, "epoch_performances.pkl"), "wb") as f:
             pickle.dump(epoch_performances, f)
 
-        log_print(epoch_performances[-1])
+        #log_print(epoch_performances[-1])
         log_print(
             f"EPOCH {epoch:03d} | TaskLoss {running['task']:.4f} Reg {running['reg']:.4f} "
             f"Acc {running['acc']:.4f} | TestTask {test_task:.4f} TestAcc {test_acc:.4f}")
