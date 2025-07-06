@@ -1,7 +1,7 @@
 import pickle
 from collections import OrderedDict
-from datasets.cifar10 import CIFAR10
-from datasets.transforms import cifar_trans_test, cifar_trans_train
+from dataset_loaders.cifar10 import CIFAR10
+from dataset_loaders.transforms import cifar_trans_test, cifar_trans_train
 import numpy as np
 import torch
 import torch.nn as nn

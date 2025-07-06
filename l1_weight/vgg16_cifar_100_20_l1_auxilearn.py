@@ -5,8 +5,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 import torch.nn as nn
 
-from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
-from datasets.transforms import cifar_trans_train, cifar_trans_test
+from dataset_loaders.cifar100 import CIFAR100, CoarseLabelCIFAR100
+from dataset_loaders.transforms import cifar_trans_train, cifar_trans_test
 from l1_weight.l1_learn_auxilearn import train_meta_l1_network
 from utils.path_name import create_path_name, save_parameter_dict
 from utils.log import change_log_location

@@ -1,8 +1,8 @@
 import subprocess
 
-from datasets.cifar10 import CIFAR10
-from datasets.cifar100 import CIFAR100, CoarseLabelCIFAR100
-from datasets.transforms import cifar_trans_test, cifar_trans_train
+from dataset_loaders.cifar10 import CIFAR10
+from dataset_loaders.cifar100 import CIFAR100, CoarseLabelCIFAR100
+from dataset_loaders.transforms import cifar_trans_test, cifar_trans_train
 import numpy as np
 import torch
 import torch.optim as optim

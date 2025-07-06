@@ -1,8 +1,8 @@
 import subprocess
 
-from datasets.capped_dataset import PerClassCap
-from datasets.cub200 import CUB200
-from datasets.transforms import common_train_tf, common_test_tf
+from dataset_loaders.capped_dataset import PerClassCap
+from dataset_loaders.cub200 import CUB200
+from dataset_loaders.transforms import common_train_tf, common_test_tf
 import numpy as np
 import torch
 import torch.optim as optim

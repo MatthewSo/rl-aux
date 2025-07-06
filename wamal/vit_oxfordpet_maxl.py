@@ -1,8 +1,8 @@
 import subprocess
 
-from datasets.capped_dataset import PerClassCap
-from datasets.oxford_pet import OxfordIIITPet
-from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
+from dataset_loaders.capped_dataset import PerClassCap
+from dataset_loaders.oxford_pet import OxfordIIITPet
+from dataset_loaders.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
 import numpy as np
 import torch
 import torch.optim as optim

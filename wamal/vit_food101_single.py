@@ -1,7 +1,7 @@
 import subprocess
 
-from datasets.capped_dataset import PerClassCap
-from datasets.food101 import Food101
+from dataset_loaders.capped_dataset import PerClassCap
+from dataset_loaders.food101 import Food101
 import numpy as np
 import torch
 import torch.optim as optim

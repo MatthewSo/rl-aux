@@ -4,8 +4,8 @@ from tabnanny import verbose
 import torch
 from torch import nn
 
-from datasets.imagenet import ImageNet
-from datasets.transforms import cifar_trans_train, cifar_trans_test, imagenet_trans_train, imagenet_trans_val
+from dataset_loaders.imagenet import ImageNet
+from dataset_loaders.transforms import cifar_trans_train, cifar_trans_test, imagenet_trans_train, imagenet_trans_val
 from environment.learn_weight_aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16

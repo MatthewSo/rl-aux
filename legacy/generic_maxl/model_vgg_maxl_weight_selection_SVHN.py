@@ -1,9 +1,9 @@
 import pickle
 from collections import OrderedDict
 print("importing collections")
-from datasets.svhn import SVHN
+from dataset_loaders.svhn import SVHN
 print("importing svhn")
-from datasets.transforms import svhn_trans_test, svhn_trans_train
+from dataset_loaders.transforms import svhn_trans_test, svhn_trans_train
 print("importing transforms")
 import numpy as np
 print("importing numpy")

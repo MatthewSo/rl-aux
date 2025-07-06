@@ -3,8 +3,8 @@ import subprocess
 import torch
 from torch import nn
 
-from datasets.places_365 import Places365
-from datasets.transforms import places365_trans_train, places365_trans_test
+from dataset_loaders.places_365 import Places365
+from dataset_loaders.transforms import places365_trans_train, places365_trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
 from networks.ppo.ppo import  get_fast_dummy_ppo_agent
 from networks.primary.vgg import VGG16

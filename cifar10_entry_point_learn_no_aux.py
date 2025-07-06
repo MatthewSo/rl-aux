@@ -3,8 +3,8 @@ import subprocess
 import torch
 from torch import nn
 
-from datasets.cifar10 import CIFAR10
-from datasets.transforms import  cifar_trans_train, cifar_trans_test
+from dataset_loaders.cifar10 import CIFAR10
+from dataset_loaders.transforms import  cifar_trans_train, cifar_trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16

@@ -1,9 +1,9 @@
 import subprocess
 
-from datasets.cifar10 import CIFAR10
-from datasets.cub200 import CUB200
-from datasets.stanford_cars import StanfordCars
-from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
+from dataset_loaders.cifar10 import CIFAR10
+from dataset_loaders.cub200 import CUB200
+from dataset_loaders.stanford_cars import StanfordCars
+from dataset_loaders.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
 import numpy as np
 import torch
 import torch.optim as optim

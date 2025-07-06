@@ -1,10 +1,10 @@
 import pickle
 from collections import OrderedDict
 
-from datasets.cifar10 import CIFAR10
+from dataset_loaders.cifar10 import CIFAR10
 
 print("importing collections")
-from datasets.transforms import cifar_trans_train, cifar_trans_test
+from dataset_loaders.transforms import cifar_trans_train, cifar_trans_test
 print("importing transforms")
 import numpy as np
 print("importing numpy")

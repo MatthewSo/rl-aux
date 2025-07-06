@@ -1,8 +1,8 @@
 import subprocess
 
-from datasets.cifar10 import CIFAR10
-from datasets.svhn import SVHN
-from datasets.transforms import cifar_trans_test, cifar_trans_train
+from dataset_loaders.cifar10 import CIFAR10
+from dataset_loaders.svhn import SVHN
+from dataset_loaders.transforms import cifar_trans_test, cifar_trans_train
 import numpy as np
 import torch
 import torch.optim as optim

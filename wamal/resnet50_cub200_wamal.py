@@ -2,9 +2,9 @@ import subprocess
 
 from torch.distributed.rpc.api import method_name
 
-from datasets.capped_dataset import PerClassCap
-from datasets.cub200 import CUB200
-from datasets.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
+from dataset_loaders.capped_dataset import PerClassCap
+from dataset_loaders.cub200 import CUB200
+from dataset_loaders.transforms import cifar_trans_test, cifar_trans_train, common_train_tf, common_test_tf
 import numpy as np
 import torch
 import torch.optim as optim

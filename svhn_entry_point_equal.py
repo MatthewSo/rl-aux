@@ -4,8 +4,8 @@ from tabnanny import verbose
 import torch
 from torch import nn
 
-from datasets.svhn import SVHN
-from datasets.transforms import svhn_trans_train, svhn_trans_test
+from dataset_loaders.svhn import SVHN
+from dataset_loaders.transforms import svhn_trans_train, svhn_trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent
 from networks.primary.vgg import VGG16
