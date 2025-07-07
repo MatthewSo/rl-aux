@@ -74,6 +74,7 @@ weights = ResNet50_Weights.DEFAULT          # = IMAGENET1K_V2 weights
 model   = resnet50(weights=weights)
 # Change output to 100 classes
 model.fc = nn.Linear(model.fc.in_features, PRIMARY_CLASS)
+model = model.to(DEVICE)
 
 optimizer = optim.Adam(model.parameters(), lr=PRIMARY_LR)
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
