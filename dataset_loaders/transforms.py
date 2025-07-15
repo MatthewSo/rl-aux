@@ -14,6 +14,29 @@ cifar_trans_test = transforms.Compose([
 
 ])
 
+def f(x):
+    if x.shape[0] == 1:
+        return x.repeat(3,1,1)
+    return x
+mean = [0.485, 0.456, 0.406]
+std = [0.229, 0.224, 0.225]
+cifar_256_train_transform = transforms.Compose([
+    transforms.Resize(256),                # Resize to a bit larger than final crop
+    transforms.RandomCrop(224),            # Random crop to 224x224
+    transforms.RandomHorizontalFlip(),     # Data augmentation
+    transforms.ToTensor(),
+    transforms.Lambda(lambda x: f(x)),
+    transforms.Normalize(mean, std),
+])
+
+cifar_256_test_transform = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Lambda(lambda x: f(x)),
+    transforms.Normalize(mean, std),
+])
+
 # ImageNet Transforms
 imagenet_trans_train = transforms.Compose([
     transforms.Resize(256),

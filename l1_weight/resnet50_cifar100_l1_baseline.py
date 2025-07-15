@@ -6,7 +6,8 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 
 from dataset_loaders.cifar100 import CIFAR100, CoarseLabelCIFAR100, FineLabelCIFAR100
-from dataset_loaders.transforms import cifar_trans_train, cifar_trans_test
+from dataset_loaders.transforms import cifar_trans_train, cifar_trans_test, cifar_256_train_transform, \
+    cifar_256_test_transform
 from l1_weight.l1_learn_auxilearn import train_meta_l1_network
 from utils.path_name import create_path_name, save_parameter_dict
 from utils.log import change_log_location
@@ -21,12 +22,12 @@ STEP_SIZE           = 50
 GAMMA               = 0.5
 INIT_GAMMA_RAW      = 1.0
 LEARNED_RANGE       = 2.0
-AUX_SET_RATIO       = 0.1
+AUX_SET_RATIO       = 0.0
 DEVICE              = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 save_path = create_path_name(
-    agent_type            = "NORMAL_L1",
+    agent_type            = "NORMAL_L1v2",
     primary_model_type    = "RESNET50",
     train_ratio           = 1,
     aux_weight            = None,
@@ -58,9 +59,9 @@ save_parameter_dict({
 change_log_location(save_path)
 
 train_base = CIFAR100(root="./data/cifar100", train=True,
-                      transform=cifar_trans_train, download=True)
+                      transform=cifar_256_train_transform, download=True)
 test_base  = CIFAR100(root="./data/cifar100", train=False,
-                      transform=cifar_trans_test, download=True)
+                      transform=cifar_256_test_transform, download=True)
 
 train_set = FineLabelCIFAR100(train_base)
 test_set  = FineLabelCIFAR100(test_base)
