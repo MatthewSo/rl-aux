@@ -23,7 +23,7 @@ GAMMA               = 0.5
 INIT_GAMMA_RAW      = 1.0
 LEARNED_RANGE       = 2.0
 AUX_SET_RATIO       = 0.1
-DEVICE              = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+DEVICE              = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
 
 
 save_path = create_path_name(
