@@ -14,7 +14,7 @@ from utils.log import change_log_location
 from torchvision.models import resnet50, ResNet50_Weights
 
 
-BATCH_SIZE          = 32
+BATCH_SIZE          = 16
 PRIMARY_CLASS       = 100
 TOTAL_EPOCH         = 15
 PRIMARY_LR          = 1e-4
