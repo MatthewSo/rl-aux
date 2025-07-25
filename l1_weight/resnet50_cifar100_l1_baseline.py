@@ -14,7 +14,7 @@ from utils.log import change_log_location
 from torchvision.models import resnet50, ResNet50_Weights
 
 
-BATCH_SIZE          = 64
+BATCH_SIZE          = 16
 PRIMARY_CLASS       = 100
 TOTAL_EPOCH         = 15
 PRIMARY_LR          = 1e-4
@@ -23,7 +23,7 @@ GAMMA               = 0.5
 INIT_GAMMA_RAW      = 1.0
 LEARNED_RANGE       = 2.0
 AUX_SET_RATIO       = 0.0
-DEVICE              = torch.device("cuda:4" if torch.cuda.is_available() else "cpu")
+DEVICE              = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 
 save_path = create_path_name(
