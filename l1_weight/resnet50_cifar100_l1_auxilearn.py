@@ -27,7 +27,7 @@ DEVICE              = torch.device("cuda:0" if torch.cuda.is_available() else "c
 
 
 save_path = create_path_name(
-    agent_type            = "META_L1v2",
+    agent_type            = "META_L1v2_small_gamma",
     primary_model_type    = "RESNET50",
     train_ratio           = 1,
     aux_weight            = None,
@@ -86,7 +86,7 @@ gamma_params = nn.ParameterList([
 ])
 
 INIT_GAMMA_RAW = torch.tensor(INIT_GAMMA_RAW, device=DEVICE)
-gamma_optimizer = optim.Adam(gamma_params, lr=0.01, weight_decay=5e-4)
+gamma_optimizer = optim.Adam(gamma_params, lr=0.001, weight_decay=5e-4)
 gamma_scheduler = optim.lr_scheduler.StepLR(gamma_optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
 train_meta_l1_network(
