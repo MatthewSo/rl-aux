@@ -140,7 +140,8 @@ class PreciseAuxTaskEnv(gym.Env):
             self.train_data_iter = iter(self.train_loader)
             self.current_image, self.current_label = next(self.train_data_iter)
 
-        return {"image": self.current_image}, done
+        obs_img = self.current_image[0].detach().cpu().numpy().astype(np.float32)
+        return {"image": obs_img}, done
 
     def reset(self, seed=None):
         if self.verbose:
@@ -185,13 +186,14 @@ class PreciseAuxTaskEnv(gym.Env):
             if self.scheduler_reload_state is not None:
                 self.scheduler.load_state_dict(self.scheduler_reload_state)
 
-        input = self.current_image
-        label = self.current_label
+        input= self.current_image.to(self.device, non_blocking=True)
+        label = self.current_label.to(self.device, non_blocking=True)
 
         self.optimizer.zero_grad()
         primary_output, aux_output = self.model(input)
 
-        flat_idx = label.to(torch.long) * self.hierarchy_factor + action.to(torch.long)
+        action_idx = torch.as_tensor(action, dtype=torch.long, device=self.device).unsqueeze(0)
+        flat_idx = label.to(torch.long) * self.hierarchy_factor + action_idx
         aux_target = torch.zeros((aux_output.size(0), self.hierarchy_factor * self.primary_dim), device=self.device)
         aux_target.scatter_(1, flat_idx.unsqueeze(1), 1.0)
 
