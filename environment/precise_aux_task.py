@@ -240,7 +240,7 @@ class PreciseAuxTaskEnv(gym.Env):
     def render(self, mode='human'):
         pass  # Not needed for now
 
-    def train_label_network_with_rl(self, model, ratio=1):
+    def train_rl_network_with_rl(self, model, ratio=1):
         episode_length = len(self.train_loader) * self.batch_size
         episode_length = int(episode_length * ratio)
         model.learn(total_timesteps=episode_length)
