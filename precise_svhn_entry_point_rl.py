@@ -133,9 +133,9 @@ auxilary_task_agent = get_ppo_agent(env=env,
                                     learning_rate=PPO_LEARNING_RATE,
                                     device=device,
                                     ent_coef=0.01,
-                                    n_steps=BATCH_SIZE,
+                                    n_steps=2048,
                                     n_epochs=10,
-                                    batch_size=BATCH_SIZE,
+                                    batch_size=64,
                                     weight_bins=21,
                                     )
 
