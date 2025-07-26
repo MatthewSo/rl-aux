@@ -196,6 +196,7 @@ class PreciseAuxTaskEnv(gym.Env):
         log_print("Primary dimension:", self.primary_dim)
         log_print("Auxiliary dimension:", self.hierarchy_factor * self.primary_dim)
         log_print("Observation space:", self.observation_space)
+        log_print("Action space:", self.action_space)
         log_print("Input shape:", input.shape)
         log_print("Label shape:", label.shape)
         log_print("Primary output shape:", primary_output.shape)
