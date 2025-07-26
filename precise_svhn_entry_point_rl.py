@@ -38,6 +38,13 @@ SAVE_PATH = create_path_name(
     learn_weights=LEARN_WEIGHTS,
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
     dataset="SVHN",
+    optimizer=OPTIMIZER,
+    range=1.0,
+    aux_set_ratio=0.0,
+    learning_rate=PRIMARY_LEARNING_RATE,
+    normalize_batch=False,
+    batch_fraction= None,
+    full_dataset= FULL_DATASET,
 )
 
 change_log_location(SAVE_PATH)
