@@ -192,6 +192,10 @@ class PreciseAuxTaskEnv(gym.Env):
         self.optimizer.zero_grad()
         primary_output, aux_output = self.model(input)
 
+        log_print("Hierarchy factor:", self.hierarchy_factor)
+        log_print("Primary dimension:", self.primary_dim)
+        log_print("Auxiliary dimension:", self.hierarchy_factor * self.primary_dim)
+        log_print("Observation space:", self.observation_space)
         log_print("Input shape:", input.shape)
         log_print("Label shape:", label.shape)
         log_print("Primary output shape:", primary_output.shape)
