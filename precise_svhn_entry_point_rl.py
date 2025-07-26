@@ -7,7 +7,7 @@ from dataset_loaders.svhn import SVHN
 from dataset_loaders.transforms import svhn_trans_train, svhn_trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
 from environment.precise_aux_task import PreciseAuxTaskEnv
-from networks.ppo.ppo import get_ppo_agent
+from networks.ppo.ppo import get_ppo_agent, get_precise_ppo_agent
 from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location
@@ -127,16 +127,15 @@ env = PreciseAuxTaskEnv(
     verbose=True,
 )
 
-auxilary_task_agent = get_ppo_agent(env=env,
+auxilary_task_agent = get_precise_ppo_agent(env=env,
                                     feature_dim=OBSERVATION_FEATURE_DIMENSION,
-                                    auxiliary_dim=AUX_DIMENSION,
+                                    hierarchy_factor=5,
                                     learning_rate=PPO_LEARNING_RATE,
                                     device=device,
                                     ent_coef=0.01,
                                     n_steps=2048,
                                     n_epochs=10,
                                     batch_size=64,
-                                    weight_bins=21,
                                     )
 
 log_print("Done Initializing PPO Agent")

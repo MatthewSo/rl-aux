@@ -30,6 +30,27 @@ def get_ppo_agent( env, feature_dim, auxiliary_dim, weight_bins, device, batch_s
 
     return model
 
+def get_precise_ppo_agent( env, feature_dim, hierarchy_factor ,device, batch_size, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10, input_shape=(3, 32, 32)):
+    '''
+    This function creates a PPO agent with a custom feature extractor and action/value networks.
+    '''
+    # Set up the RL PPO agent (of course other agent types may make sense too)
+    policy_kwargs = {
+        "features_extractor_class": CustomFeatureExtractor, #CustomFeatureExtractor,
+        "features_extractor_kwargs": {"features_dim": feature_dim, "input_shape": input_shape},
+        "net_arch":[],
+    }
+
+    model = PPO("MultiInputPolicy", env, verbose=0, policy_kwargs=policy_kwargs,batch_size=batch_size, learning_rate=learning_rate,ent_coef=ent_coef,n_steps=n_steps,n_epochs=n_epochs, device=device)
+    action_net = ActionNet(feature_dim, hierarchy_factor)
+    action_net = action_net.to(device)
+    model.policy.action_net = action_net
+
+    value_net = ValueNet(feature_dim)
+    value_net = value_net.to(device)
+    model.policy.value_net = value_net
+
+    return model
 
 def get_fast_dummy_ppo_agent(
         env,
