@@ -134,11 +134,11 @@ class PreciseAuxTaskEnv(gym.Env):
     def get_obs(self):
         done = False
         try:
-            self.current_image = next(self.train_data_iter)
+            self.current_image, self.current_label = next(self.train_data_iter)
         except StopIteration:
             done = True
             self.train_data_iter = iter(self.train_loader)
-            self.current_image = next(self.train_data_iter)
+            self.current_image, self.current_label = next(self.train_data_iter)
 
         return {"image": self.current_image}, done
 
@@ -163,9 +163,7 @@ class PreciseAuxTaskEnv(gym.Env):
         # Reset data loader to iterate over batches
         self.reset_data_loaders(self.seed)
 
-        # Return the first batch as observations
-        self.current_batch, self.current_labels = next(self.train_data_iter)
-        self.current_batch_aux_labels = []
+        self.current_image, self.current_label = None, None
 
         obs, done = self.get_obs()
 
@@ -187,12 +185,13 @@ class PreciseAuxTaskEnv(gym.Env):
             if self.scheduler_reload_state is not None:
                 self.scheduler.load_state_dict(self.scheduler_reload_state)
 
-        inputs, labels = self.current_batch.to(self.device),self.current_labels.to(self.device)
+        input = self.current_image
+        label = self.current_label
 
         self.optimizer.zero_grad()
-        primary_output, aux_output = self.model(inputs)
+        primary_output, aux_output = self.model(input)
 
-        flat_idx = labels.to(torch.long) * self.hierarchy_factor + action.to(torch.long)
+        flat_idx = label.to(torch.long) * self.hierarchy_factor + action.to(torch.long)
         aux_target = torch.zeros((aux_output.size(0), self.hierarchy_factor * self.primary_dim), device=self.device)
         aux_target.scatter_(1, flat_idx.unsqueeze(1), 1.0)
 
@@ -200,8 +199,8 @@ class PreciseAuxTaskEnv(gym.Env):
         #mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
         #aux_target=mask_softmax(torch.tensor(aux_target).to(self.device),mask,dim=-1)
 
-        loss_class = torch.mean(self.model.model_fit(primary_output, labels, pri=True,num_output=self.primary_dim, device=self.device))
-        loss_aux = torch.mean(self.model.model_fit(aux_output, aux_target,pri=False, num_output=self.self.hierarchy_factor * self.primary_dim, device=self.device))
+        loss_class = torch.mean(self.model.model_fit(primary_output, label, pri=True,num_output=self.primary_dim, device=self.device))
+        loss_aux = torch.mean(self.model.model_fit(aux_output, aux_target,pri=False, num_output=self.hierarchy_factor * self.primary_dim, device=self.device))
 
         info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
         if self.verbose:
