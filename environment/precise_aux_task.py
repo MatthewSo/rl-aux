@@ -192,24 +192,26 @@ class PreciseAuxTaskEnv(gym.Env):
         self.optimizer.zero_grad()
         primary_output, aux_output = self.model(input)
 
-        log_print("Hierarchy factor:", self.hierarchy_factor)
-        log_print("Primary dimension:", self.primary_dim)
-        log_print("Auxiliary dimension:", self.hierarchy_factor * self.primary_dim)
-        log_print("Observation space:", self.observation_space)
-        log_print("Action space:", self.action_space)
-        log_print("Input shape:", input.shape)
-        log_print("Label shape:", label.shape)
-        log_print("Primary output shape:", primary_output.shape)
-        log_print("Auxiliary output shape:", aux_output.shape)
-        log_print("Action taken:", action)
-
         action_idx = torch.as_tensor(action, dtype=torch.long, device=self.device).unsqueeze(0)
-        log_print("Action index shape:", action_idx.shape)
         flat_idx = label.to(torch.long) * self.hierarchy_factor + action_idx
-        log_print("Flat index shape:", flat_idx.shape)
         aux_target = torch.zeros((aux_output.size(0), self.hierarchy_factor * self.primary_dim), device=self.device)
-        log_print("Auxiliary target shape:", aux_target.shape)
         aux_target.scatter_(1, flat_idx.unsqueeze(1), 1.0)
+
+        if self.verbose:
+            log_print("Hierarchy factor:", self.hierarchy_factor)
+            log_print("Primary dimension:", self.primary_dim)
+            log_print("Auxiliary dimension:", self.hierarchy_factor * self.primary_dim)
+            log_print("Observation space:", self.observation_space)
+            log_print("Action space:", self.action_space)
+            log_print("Input shape:", input.shape)
+            log_print("Label shape:", label.shape)
+            log_print("Primary output shape:", primary_output.shape)
+            log_print("Auxiliary output shape:", aux_output.shape)
+            log_print("Action taken:", action)
+            log_print("Action index shape:", action_idx.shape)
+            log_print("Flat index shape:", flat_idx.shape)
+            log_print("Auxiliary target shape:", aux_target.shape)
+
 
         # ADDBACK: We can add back in the mask softmax if needed
         #mask=create_mask_from_labels(labels, num_classes=self.primary_dim, num_features=self.aux_dim ).to(self.device)
