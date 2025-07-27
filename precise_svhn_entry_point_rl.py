@@ -124,7 +124,7 @@ env = PreciseAuxTaskEnv(
     image_shape = (3, 32, 32),
     aux_weight=AUX_WEIGHT,
     save_path=SAVE_PATH,
-    verbose=True,
+    verbose=False,
 )
 
 auxilary_task_agent = get_precise_ppo_agent(env=env,
