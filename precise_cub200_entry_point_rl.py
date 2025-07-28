@@ -30,6 +30,7 @@ TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
 LEARN_WEIGHTS = True
+SHAPE = (3, 224, 224)
 
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
 
@@ -40,7 +41,7 @@ SAVE_PATH = create_path_name(
     aux_weight=AUX_WEIGHT,
     learn_weights=LEARN_WEIGHTS,
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
-    dataset="SVHN",
+    dataset="CUB200",
     optimizer=OPTIMIZER,
     range=1.0,
     aux_set_ratio=0.0,
@@ -65,7 +66,7 @@ save_all_parameters(
     learn_weights=LEARN_WEIGHTS,
     train_ratio=TRAIN_RATIO,
     save_path=SAVE_PATH,
-    dataset="SVHN",
+    dataset="CUB200",
     model_name="VGG",
     agent_type="PPO",
     observation_feature_dimensions=OBSERVATION_FEATURE_DIMENSION,
@@ -128,7 +129,7 @@ env = PreciseAuxTaskEnv(
     pri_dim=PRIMARY_DIMENSION,
     hierarchy_factor=5,
     rl_analysis_batch_size=256,
-    image_shape = (3, 224, 224),
+    image_shape = SHAPE,
     aux_weight=AUX_WEIGHT,
     save_path=SAVE_PATH,
     verbose=False,
@@ -138,6 +139,7 @@ auxilary_task_agent = get_precise_ppo_agent(env=env,
                                     feature_dim=OBSERVATION_FEATURE_DIMENSION,
                                     hierarchy_factor=5,
                                     learning_rate=PPO_LEARNING_RATE,
+                                    input_shape=SHAPE,
                                     device=device,
                                     ent_coef=0.01,
                                     n_steps=2048,
@@ -159,5 +161,5 @@ train_auxilary_agent(
     save_path=SAVE_PATH,
     model_train_ratio=TRAIN_RATIO,
     primary_dimension=PRIMARY_DIMENSION,
-    skip_rl=True
+    skip_rl=False
 )

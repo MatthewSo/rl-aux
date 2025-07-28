@@ -30,7 +30,7 @@ def get_ppo_agent( env, feature_dim, auxiliary_dim, weight_bins, device, batch_s
 
     return model
 
-def get_precise_ppo_agent( env, feature_dim, hierarchy_factor ,device, batch_size, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10, input_shape=(3, 32, 32)):
+def get_precise_ppo_agent( env, feature_dim, hierarchy_factor ,device, batch_size, input_shape, learning_rate=0.001,ent_coef=0.01,n_steps=79, n_epochs=10, ):
     '''
     This function creates a PPO agent with a custom feature extractor and action/value networks.
     '''
