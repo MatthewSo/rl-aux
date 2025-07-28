@@ -5,22 +5,16 @@ from torch import nn
 
 from dataset_loaders.capped_dataset import PerClassCap
 from dataset_loaders.cub200 import CUB200
-from dataset_loaders.svhn import SVHN
 from dataset_loaders.transforms import svhn_trans_train, svhn_trans_test, to_tensor_transform, common_train_tf, \
     common_test_tf
-from environment.learn_weight_aux_task import AuxTaskEnv
 from environment.precise_aux_task import PreciseAuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent, get_precise_ppo_agent
-from networks.primary.vgg import VGG16
-from precise_svhn_entry_point_rl import AUX_DIMENSION
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
-from wamal.networks.vit import vit_collate
 from torchvision.models import resnet50, ResNet50_Weights
 
 from wamal.networks.wamal_wrapper import LabelWeightWrapper, WamalWrapper
-from wamal.vit_cub200_wamal import wamal_main_model
 
 BATCH_SIZE = 1
 HIERARCHY_FACTOR = 5
