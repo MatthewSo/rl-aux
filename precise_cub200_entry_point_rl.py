@@ -112,7 +112,7 @@ dataloader_test = torch.utils.data.DataLoader(
 
 weights = ResNet50_Weights.DEFAULT          # = IMAGENET1K_V2 weights
 resnet_model   = resnet50(weights=weights)
-primary_model = WamalWrapper(resnet_model, num_primary=PRIMARY_DIMENSION, num_auxiliary=AUX_DIMENSION, device=device)
+primary_model = WamalWrapper(resnet_model, num_primary=PRIMARY_DIMENSION, num_auxiliary=AUX_DIMENSION)
 primary_model = primary_model.to(device)
 
 criterion = nn.CrossEntropyLoss()
