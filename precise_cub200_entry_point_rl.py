@@ -6,19 +6,26 @@ from torch import nn
 from dataset_loaders.capped_dataset import PerClassCap
 from dataset_loaders.cub200 import CUB200
 from dataset_loaders.svhn import SVHN
-from dataset_loaders.transforms import svhn_trans_train, svhn_trans_test, to_tensor_transform
+from dataset_loaders.transforms import svhn_trans_train, svhn_trans_test, to_tensor_transform, common_train_tf, \
+    common_test_tf
 from environment.learn_weight_aux_task import AuxTaskEnv
 from environment.precise_aux_task import PreciseAuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent, get_precise_ppo_agent
 from networks.primary.vgg import VGG16
+from precise_svhn_entry_point_rl import AUX_DIMENSION
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
 from wamal.networks.vit import vit_collate
+from torchvision.models import resnet50, ResNet50_Weights
+
+from wamal.networks.wamal_wrapper import LabelWeightWrapper, WamalWrapper
+from wamal.vit_cub200_wamal import wamal_main_model
 
 BATCH_SIZE = 1
-AUX_DIMENSION = 1000
+HIERARCHY_FACTOR = 5
 PRIMARY_DIMENSION = 200
+AUX_DIMENSION = HIERARCHY_FACTOR * PRIMARY_DIMENSION
 OBSERVATION_FEATURE_DIMENSION = 256
 TOTAL_EPOCH = 200
 PRIMARY_LEARNING_RATE = 0.01
@@ -87,12 +94,12 @@ log_print("Using device:", device)
 train_set = CUB200(
     root="./data/cub200",
     train=True,
-    transform=to_tensor_transform
+    transform=common_train_tf
 )
 test_set = CUB200(
     root="./data/cub200",
     train=False,
-    transform=to_tensor_transform
+    transform=common_test_tf
 )
 
 if not FULL_DATASET:
@@ -109,10 +116,11 @@ dataloader_test = torch.utils.data.DataLoader(
     shuffle=True,
 )
 
-primary_model = VGG16(
-    primary_task_output=PRIMARY_DIMENSION,
-    auxiliary_task_output=AUX_DIMENSION
-).to(device)
+weights = ResNet50_Weights.DEFAULT          # = IMAGENET1K_V2 weights
+resnet_model   = resnet50(weights=weights)
+primary_model = WamalWrapper(resnet_model, num_primary=PRIMARY_DIMENSION, num_auxiliary=AUX_DIMENSION, device=device)
+primary_model = primary_model.to(device)
+
 criterion = nn.CrossEntropyLoss()
 
 optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNING_RATE)
