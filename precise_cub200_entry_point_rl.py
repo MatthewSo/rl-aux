@@ -17,8 +17,8 @@ from utils.path_name import create_path_name, save_all_parameters
 from wamal.networks.vit import vit_collate
 
 BATCH_SIZE = 1
-AUX_DIMENSION = 50
-PRIMARY_DIMENSION = 10
+AUX_DIMENSION = 1000
+PRIMARY_DIMENSION = 200
 OBSERVATION_FEATURE_DIMENSION = 256
 TOTAL_EPOCH = 200
 PRIMARY_LEARNING_RATE = 0.01
