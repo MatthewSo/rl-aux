@@ -104,3 +104,8 @@ common_test_tf = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(imgnet_mean, imgnet_std),
 ])
+
+to_tensor_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor()
+])

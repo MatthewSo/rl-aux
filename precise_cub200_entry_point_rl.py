@@ -6,7 +6,7 @@ from torch import nn
 from dataset_loaders.capped_dataset import PerClassCap
 from dataset_loaders.cub200 import CUB200
 from dataset_loaders.svhn import SVHN
-from dataset_loaders.transforms import svhn_trans_train, svhn_trans_test
+from dataset_loaders.transforms import svhn_trans_train, svhn_trans_test, to_tensor_transform
 from environment.learn_weight_aux_task import AuxTaskEnv
 from environment.precise_aux_task import PreciseAuxTaskEnv
 from networks.ppo.ppo import get_ppo_agent, get_precise_ppo_agent
@@ -86,10 +86,12 @@ log_print("Using device:", device)
 train_set = CUB200(
     root="./data/cub200",
     train=True,
+    transform=to_tensor_transform
 )
 test_set = CUB200(
     root="./data/cub200",
     train=False,
+    transform=to_tensor_transform
 )
 
 if not FULL_DATASET:
