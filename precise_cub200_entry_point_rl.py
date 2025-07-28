@@ -99,13 +99,11 @@ dataloader_train = torch.utils.data.DataLoader(
     dataset=train_set,
     batch_size=BATCH_SIZE,
     shuffle=True,
-    collate_fn=vit_collate
 )
 dataloader_test = torch.utils.data.DataLoader(
     dataset=test_set,
     batch_size=BATCH_SIZE,
     shuffle=True,
-    collate_fn=vit_collate
 )
 
 primary_model = VGG16(
