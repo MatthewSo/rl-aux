@@ -222,7 +222,7 @@ class PreciseAuxTaskEnv(gym.Env):
 
         info = {"loss_main" : loss_class.item(), "loss_aux": loss_aux.item() }
         if self.verbose:
-            if self.num_batches % 50 == 0:
+            if self.num_batches % 1000 == 0:
                 log_print("num_batches",self.num_batches)
                 log_print("loss",loss_class.item())
                 log_print("loss_aux",loss_aux.item())
@@ -241,7 +241,7 @@ class PreciseAuxTaskEnv(gym.Env):
                 class_output, aux_output = self.model(reward_batch)
                 loss_class_new = self.criterion(class_output, reward_labels)
                 if self.verbose:
-                    if self.num_batches % 50 == 0:
+                    if self.num_batches % 1000 == 0:
                         log_print("num_batches",self.num_batches)
                         log_print("loss",loss_class_new.item())
                 reward =  - loss_class_new.item()

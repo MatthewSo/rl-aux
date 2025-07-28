@@ -3,6 +3,8 @@ import subprocess
 import torch
 from torch import nn
 
+from dataset_loaders.capped_dataset import PerClassCap
+from dataset_loaders.cub200 import CUB200
 from dataset_loaders.svhn import SVHN
 from dataset_loaders.transforms import svhn_trans_train, svhn_trans_test
 from environment.learn_weight_aux_task import AuxTaskEnv
@@ -12,6 +14,7 @@ from networks.primary.vgg import VGG16
 from train.train_auxilary_agent import train_auxilary_agent
 from utils.log import log_print, change_log_location
 from utils.path_name import create_path_name, save_all_parameters
+from wamal.networks.vit import vit_collate
 
 BATCH_SIZE = 1
 AUX_DIMENSION = 50
@@ -80,25 +83,29 @@ log_print("Using device:", device)
 
 # ---------
 
-svhn_train_set = SVHN(
-    root="./data/svhn",
+train_set = CUB200(
+    root="./data/cub200",
     train=True,
-    transform=svhn_trans_train,
 )
-svhn_test_set = SVHN(
-    root="./data/svhn",
+test_set = CUB200(
+    root="./data/cub200",
     train=False,
-    transform=svhn_trans_test)
-
-svhn_dataloader_train = torch.utils.data.DataLoader(
-    dataset=svhn_train_set,
-    batch_size=BATCH_SIZE,
-    shuffle=True
 )
-svhn_dataloader_test = torch.utils.data.DataLoader(
-    dataset=svhn_test_set,
+
+if not FULL_DATASET:
+    train_set = PerClassCap(train_set)
+
+dataloader_train = torch.utils.data.DataLoader(
+    dataset=train_set,
     batch_size=BATCH_SIZE,
-    shuffle=True
+    shuffle=True,
+    collate_fn=vit_collate
+)
+dataloader_test = torch.utils.data.DataLoader(
+    dataset=test_set,
+    batch_size=BATCH_SIZE,
+    shuffle=True,
+    collate_fn=vit_collate
 )
 
 primary_model = VGG16(
@@ -111,8 +118,8 @@ optimizer_callback = lambda x: torch.optim.SGD(x.parameters(), lr=PRIMARY_LEARNI
 scheduler_callback = lambda x: torch.optim.lr_scheduler.StepLR(x, step_size=SCHEDULER_STEP_SIZE, gamma=SCHEDULER_GAMMA)
 
 env = PreciseAuxTaskEnv(
-    train_dataset=svhn_train_set,
-    test_dataset=svhn_test_set,
+    train_dataset=train_set,
+    test_dataset=test_set,
     device=device,
     model=primary_model,
     criterion=criterion,
@@ -146,7 +153,7 @@ train_auxilary_agent(
     rl_model=auxilary_task_agent,
     env=env,
     device=device,
-    test_loader=svhn_dataloader_test,
+    test_loader=dataloader_test,
     batch_size=BATCH_SIZE,
     total_epochs=TOTAL_EPOCH,
     save_path=SAVE_PATH,
