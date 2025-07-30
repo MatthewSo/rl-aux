@@ -12,6 +12,7 @@ from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.vgg_16 import SimplifiedVGG16
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
+import argparse
 
 AUX_WEIGHT = 0
 BATCH_SIZE = 100
@@ -34,7 +35,18 @@ USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.0
 NORMALIZE_BATCH = False
 BATCH_FRACTION = None
-ENTROPY_LOSS_FACTOR = 0.2
+ENTROPY_LOSS_FACTOR = None
+
+# KEWWORD ARGS for ENTROPY LOSS FACTOR OVERRIDE via arg parse
+parser = argparse.ArgumentParser(description='WAMAL CIFAR100-20 Training')
+parser.add_argument('--entropy_loss_factor', type=float, default=ENTROPY_LOSS_FACTOR, help='Entropy loss factor for WAMAL training')
+# GPU
+parser.add_argument('--gpu', type=int, default=0, help='GPU device ID to use (default: 0)')
+args = parser.parse_args()
+ENTROPY_LOSS_FACTOR = args.entropy_loss_factor
+GPU = args.gpu
+# SAMPLE USAGE = python wamal/vgg16_cifar_100_20_wamal_ENTROPY_ABLATION.py --entropy_loss_factor 0.2 --gpu 0
+
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -53,7 +65,7 @@ save_path = create_path_name(
     batch_fraction=BATCH_FRACTION,
     entropy_loss_factor=ENTROPY_LOSS_FACTOR
 )
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 cifar100_train = CIFAR100(
     root="./data/cifar100",
