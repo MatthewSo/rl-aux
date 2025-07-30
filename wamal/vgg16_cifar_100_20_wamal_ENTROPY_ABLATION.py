@@ -7,7 +7,7 @@ import numpy as np
 import torch
 import torch.optim as optim
 import torch.utils.data.sampler as sampler
-from utils.log import change_log_location
+from utils.log import change_log_location, log_print
 from utils.path_name import create_path_name, save_parameter_dict
 from wamal.networks.vgg_16 import SimplifiedVGG16
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
@@ -46,7 +46,7 @@ args = parser.parse_args()
 ENTROPY_LOSS_FACTOR = args.entropy_loss_factor
 GPU = args.gpu
 # SAMPLE USAGE = python wamal/vgg16_cifar_100_20_wamal_ENTROPY_ABLATION.py --entropy_loss_factor 0.2 --gpu 0
-
+log_print("ENTROPY LOSS FACTOR:", ENTROPY_LOSS_FACTOR)
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -66,6 +66,7 @@ save_path = create_path_name(
     entropy_loss_factor=ENTROPY_LOSS_FACTOR
 )
 device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
+log_print("GPU Device:", device)
 
 cifar100_train = CIFAR100(
     root="./data/cifar100",
