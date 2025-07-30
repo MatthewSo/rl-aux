@@ -34,6 +34,7 @@ USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
 BATCH_FRACTION = None
+ENTROPY_LOSS_FACTOR = 0.2
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -50,8 +51,9 @@ save_path = create_path_name(
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
+    entropy_loss_factor=ENTROPY_LOSS_FACTOR
 )
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 cifar100_train = CIFAR100(
     root="./data/cifar100",
@@ -96,6 +98,7 @@ save_parameter_dict(
         "full_dataset": FULL_DATASET,
         "use_auxiliary_set": USE_AUXILIARY_SET,
         "auxiliary_set_ratio": AUXILIARY_SET_RATIO,
+        "entropy_loss_factor": ENTROPY_LOSS_FACTOR,
     }
 )
 
@@ -147,4 +150,4 @@ train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
                     save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET,
-                    aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION, normalize_batch_weights=NORMALIZE_BATCH)
+                    aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION, normalize_batch_weights=NORMALIZE_BATCH, entropy_loss_factor=ENTROPY_LOSS_FACTOR)

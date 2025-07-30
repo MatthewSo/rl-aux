@@ -17,7 +17,8 @@ from utils.vars import softmax
 import torch.nn.functional as F
 
 class PreciseAuxTaskEnv(gym.Env):
-    def __init__(self, train_dataset, test_dataset, device, model, criterion, optimizer_func,
+    def \
+            __init__(self, train_dataset, test_dataset, device, model, criterion, optimizer_func,
                  scheduler_func, image_shape, pri_dim, hierarchy_factor, rl_analysis_batch_size,
                  verbose=False, aux_weight = 1, save_path='./' ):
         super(PreciseAuxTaskEnv, self).__init__()

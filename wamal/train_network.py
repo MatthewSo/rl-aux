@@ -22,7 +22,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
                          gen_optimizer, gen_scheduler,
                          num_axuiliary_classes, num_primary_classes,
                          save_path, use_learned_weights, model_lr,normalize_batch_weights, batch_frac,
-                         val_range, use_auxiliary_set, aux_split, skip_mal=False,
+                         val_range, use_auxiliary_set, aux_split, skip_mal=False, entropy_loss_factor=0.2
 ):
 
     epoch_performances = []

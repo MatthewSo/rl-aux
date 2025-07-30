@@ -4,8 +4,8 @@ import os
 from utils.log import log_print
 
 
-def create_path_name(agent_type, learn_weights, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset, optimizer, full_dataset, learning_rate, range, aux_set_ratio, normalize_batch, batch_fraction):
-    return f"./trained_models/{agent_type}_{primary_model_type}_learn_weights_{learn_weights}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}_{dataset}_optimizer_{optimizer}_fulldataset_{full_dataset}_lr_{learning_rate}_range_{range}_auxiliary_set_ratio_{aux_set_ratio}_normalize_batch_{normalize_batch}_batch_fraction_{batch_fraction}"
+def create_path_name(agent_type, learn_weights, primary_model_type, train_ratio, aux_weight, observation_feature_dimensions, dataset, optimizer, full_dataset, learning_rate, range, aux_set_ratio, normalize_batch, batch_fraction, entropy_loss_factor):
+    return f"./trained_models/{agent_type}_{primary_model_type}_learn_weights_{learn_weights}_train_ratio_{train_ratio}_aux_weight_{aux_weight}_obs_dim_{observation_feature_dimensions}_{dataset}_optimizer_{optimizer}_fulldataset_{full_dataset}_lr_{learning_rate}_range_{range}_auxiliary_set_ratio_{aux_set_ratio}_normalize_batch_{normalize_batch}_batch_fraction_{batch_fraction}_entropy_loss_factor_{entropy_loss_factor}"
 
 
 def save_all_parameters(
@@ -28,6 +28,7 @@ def save_all_parameters(
         learn_weights,
         primary_task_type,
         git_commit_hash,
+        entropy_loss_factor
 ):
     # save as loadable json
     # create path if it doesnt exist
@@ -54,6 +55,7 @@ def save_all_parameters(
         "aux_task_type": aux_task_type,
         "primary_task_type": primary_task_type,
         "git_commit_hash": git_commit_hash,
+        "entropy_loss_factor": entropy_loss_factor
     }
     # Save the parameters to a JSON file
     with open(f"{save_path}/parameters.json", "w") as f:
