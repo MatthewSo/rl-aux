@@ -183,7 +183,7 @@ def train_wamal_network(device, dataloader_train, dataloader_test,
             train_loss1 = model_fit(train_pred1, train_label, device, pri=True, num_output=num_primary_classes)
 
             # update theta_2 with primary loss + entropy loss
-            (torch.mean(train_loss1) + 0.2 * torch.mean(train_loss3)).backward()
+            (torch.mean(train_loss1) + entropy_loss_factor * torch.mean(train_loss3)).backward()
             gen_optimizer.step()
 
             train_predict_label1 = train_pred1.data.max(1)[1]
