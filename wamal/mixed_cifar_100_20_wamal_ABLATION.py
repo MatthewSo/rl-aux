@@ -15,8 +15,6 @@ from wamal.train_network import train_wamal_network
 import argparse
 from torchvision.models import resnet50, ResNet50_Weights
 
-from wamal.vgg16_svhn_wamal import wamal_main_model
-
 AUX_WEIGHT = 0
 BATCH_SIZE = 100
 PRIMARY_CLASS = 20
@@ -47,7 +45,7 @@ parser.add_argument('--primary_backbone', type=str, default='vgg16', help='Prima
 parser.add_argument('--label_backbone', type=str, default='resnet50', help='Label backbone model (default: resnet50)')
 args = parser.parse_args()
 GPU = args.gpu
-# SAMPLE USAGE = python wamal/vgg16_cifar_100_20_wamal_RANGE_ABLATION.py --primary_backbone vgg16 --label_backbone resnet50 --gpu 0
+# SAMPLE USAGE = python -m wamal.vgg16_cifar_100_20_wamal_RANGE_ABLATION.py --primary_backbone vgg16 --label_backbone resnet50 --gpu 0
 primary_model_type = f"PRIMARY_{args.primary_backbone.upper()}_LABEL_{args.label_backbone.upper()}"
 log_print("Primary Backbone:", args.primary_backbone)
 log_print("Label Backbone:", args.label_backbone)
