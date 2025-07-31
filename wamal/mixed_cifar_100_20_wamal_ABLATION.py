@@ -135,11 +135,11 @@ elif args.label_backbone.lower() == 'none':
     label_model = None
     SKIP_MAL = True
     LEARN_WEIGHTS = False
+    label_model = label_model.to(device)
 else:
     raise ValueError(f"Label backbone {args.label_backbone} not recognized. Use 'resnet50' or 'vgg16'.")
 
 log_print("Label Model:", label_model)
-label_model = label_model.to(device)
 gen_optimizer = optim.SGD(label_model.parameters(), lr=GEN_OPTIMIZER_LR, weight_decay=GEN_OPTIMIZER_WEIGHT_DECAY)
 gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 # define parameters
