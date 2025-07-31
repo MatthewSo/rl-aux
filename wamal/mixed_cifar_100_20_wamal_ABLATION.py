@@ -130,6 +130,11 @@ if args.label_backbone.lower() == 'resnet50':
     label_model = LabelWeightWrapper(resnet_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
 elif args.label_backbone.lower() == 'vgg16':
     label_model = LabelWeightWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
+elif args.label_backbone.lower() == 'none':
+    log_print("No label backbone specified, using None.")
+    label_model = None
+    SKIP_MAL = True
+    LEARN_WEIGHTS = False
 else:
     raise ValueError(f"Label backbone {args.label_backbone} not recognized. Use 'resnet50' or 'vgg16'.")
 
