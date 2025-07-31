@@ -8,7 +8,7 @@ import torch
 import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location, log_print
-from utils.path_name import create_path_name, save_parameter_dict
+from utils.path_name import create_path_name, save_parameter_dict, create_path_name_short
 from wamal.networks.vgg_16 import SimplifiedVGG16
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
@@ -50,22 +50,9 @@ primary_model_type = f"PRIMARY_{args.primary_backbone.upper()}_LABEL_{args.label
 log_print("Primary Backbone:", args.primary_backbone)
 log_print("Label Backbone:", args.label_backbone)
 
-save_path = create_path_name(
+save_path = create_path_name_short(
     agent_type="WAMAL_MIXED_ABLATION",
     primary_model_type=primary_model_type,
-    train_ratio=TRAIN_RATIO,
-    aux_weight=AUX_WEIGHT,
-    observation_feature_dimensions=0,
-    dataset="CIFAR100-20",
-    learn_weights=LEARN_WEIGHTS,
-    optimizer=OPTIMIZER,
-    full_dataset=FULL_DATASET,
-    learning_rate=PRIMARY_LR,
-    range=RANGE,
-    aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
-    normalize_batch=NORMALIZE_BATCH,
-    batch_fraction=BATCH_FRACTION,
-    entropy_loss_factor=ENTROPY_LOSS_FACTOR,
 )
 device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 log_print("GPU Device:", device)
