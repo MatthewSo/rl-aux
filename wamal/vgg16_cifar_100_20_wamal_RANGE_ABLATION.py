@@ -1,0 +1,167 @@
+import subprocess
+
+from dataset_loaders.cifar10 import CIFAR10
+from dataset_loaders.cifar100 import CIFAR100, CoarseLabelCIFAR100
+from dataset_loaders.transforms import cifar_trans_test, cifar_trans_train
+import numpy as np
+import torch
+import torch.optim as optim
+import torch.utils.data.sampler as sampler
+from utils.log import change_log_location, log_print
+from utils.path_name import create_path_name, save_parameter_dict
+from wamal.networks.vgg_16 import SimplifiedVGG16
+from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
+from wamal.train_network import train_wamal_network
+import argparse
+
+AUX_WEIGHT = 0
+BATCH_SIZE = 100
+PRIMARY_CLASS = 20
+AUXILIARY_CLASS = 100
+SKIP_MAL = False
+LEARN_WEIGHTS = True
+TOTAL_EPOCH = 200
+PRIMARY_LR = 0.02
+STEP_SIZE = 50
+IMAGE_SHAPE = (3, 32, 32)
+GAMMA = 0.5
+GEN_OPTIMIZER_LR = 1e-3
+GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
+TRAIN_RATIO = 1
+OPTIMIZER = "SGD"
+FULL_DATASET = True
+RANGE = 5
+USE_AUXILIARY_SET = False
+AUXILIARY_SET_RATIO = 0.0
+NORMALIZE_BATCH = False
+BATCH_FRACTION = None
+ENTROPY_LOSS_FACTOR = 0.2
+
+# KEWWORD ARGS for RANGE
+parser = argparse.ArgumentParser(description='WAMAL CIFAR100-20 Training')
+parser.add_argument('--range', type=float, default=RANGE, help='Range for WAMAL training')
+# GPU
+parser.add_argument('--gpu', type=int, default=0, help='GPU device ID to use (default: 0)')
+args = parser.parse_args()
+RANGE = args.range
+GPU = args.gpu
+# SAMPLE USAGE = python wamal/vgg16_cifar_100_20_wamal_RANGE_ABLATION.py --range 5 --gpu 0
+log_print("RANGE:", RANGE)
+
+save_path = create_path_name(
+    agent_type="WAMAL",
+    primary_model_type="VGG",
+    train_ratio=TRAIN_RATIO,
+    aux_weight=AUX_WEIGHT,
+    observation_feature_dimensions=0,
+    dataset="CIFAR100-20",
+    learn_weights=LEARN_WEIGHTS,
+    optimizer=OPTIMIZER,
+    full_dataset=FULL_DATASET,
+    learning_rate=PRIMARY_LR,
+    range=RANGE,
+    aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
+    normalize_batch=NORMALIZE_BATCH,
+    batch_fraction=BATCH_FRACTION,
+    entropy_loss_factor=ENTROPY_LOSS_FACTOR,
+)
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
+log_print("GPU Device:", device)
+
+cifar100_train = CIFAR100(
+    root="./data/cifar100",
+    train=True,
+    transform=cifar_trans_train
+)
+cifar100_test= CIFAR100(
+    root="./data/cifar100",
+    train=False,
+    transform=cifar_trans_test)
+
+
+train_set = CoarseLabelCIFAR100(
+    cifar100_train,
+)
+test_set = CoarseLabelCIFAR100(
+    cifar100_test,
+)
+
+
+###  DON'T CHANGE THIS PART ###
+git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
+save_parameter_dict(
+    {
+        "batch_size": BATCH_SIZE,
+        "aux_dimensions": AUXILIARY_CLASS,
+        "primary_dimensions": PRIMARY_CLASS,
+        "total_epoch": TOTAL_EPOCH,
+        "git_commit_hash": git_hash,
+        "primary_learning_rate": PRIMARY_LR,
+        "scheduler_step_size": STEP_SIZE,
+        "scheduler_gamma": GAMMA,
+        "aux_weight": AUX_WEIGHT,
+        "save_path": save_path,
+        "skip_mal": SKIP_MAL,
+        "image_shape": IMAGE_SHAPE,
+        "learn_weights": LEARN_WEIGHTS,
+        "gen_optimizer_weight_decay": GEN_OPTIMIZER_WEIGHT_DECAY,
+        "gen_optimizer_lr": GEN_OPTIMIZER_LR,
+        "train_ratio": TRAIN_RATIO,
+        "optimizer": OPTIMIZER,
+        "full_dataset": FULL_DATASET,
+        "use_auxiliary_set": USE_AUXILIARY_SET,
+        "auxiliary_set_ratio": AUXILIARY_SET_RATIO,
+        "entropy_loss_factor": ENTROPY_LOSS_FACTOR,
+        "range": RANGE,
+    }
+)
+
+dataloader_train = torch.utils.data.DataLoader(
+    dataset=train_set,
+    batch_size=BATCH_SIZE,
+    shuffle=True
+)
+dataloader_test = torch.utils.data.DataLoader(
+    dataset=test_set,
+    batch_size=BATCH_SIZE,
+    shuffle=True
+)
+
+change_log_location(save_path)
+epoch_performances=[]
+
+kwargs = {'num_workers': 1, 'pin_memory': True}
+simpliefied_vgg = SimplifiedVGG16(device=device, num_primary_classes=PRIMARY_CLASS)
+
+psi = [AUXILIARY_CLASS // PRIMARY_CLASS] * PRIMARY_CLASS
+label_model = LabelWeightWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
+label_model = label_model.to(device)
+gen_optimizer = optim.SGD(label_model.parameters(), lr=GEN_OPTIMIZER_LR, weight_decay=GEN_OPTIMIZER_WEIGHT_DECAY)
+gen_scheduler = optim.lr_scheduler.StepLR(gen_optimizer, step_size=STEP_SIZE, gamma=GAMMA)
+# define parameters
+total_epoch = TOTAL_EPOCH
+train_batch = len(dataloader_train)
+test_batch = len(dataloader_test)
+
+# define multi-task network, and optimiser with learning rate 0.01, drop half for every 50 epochs
+wamal_main_model = WamalWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS),num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
+wamal_main_model = wamal_main_model.to(device)
+
+if OPTIMIZER == "SGD":
+    optimizer = optim.SGD(wamal_main_model.parameters(), lr=PRIMARY_LR)
+elif OPTIMIZER == "ADAM":
+    optimizer = optim.Adam(wamal_main_model.parameters(), lr=PRIMARY_LR, weight_decay=5e-4)
+else:
+    raise ValueError(f"Optimizer {OPTIMIZER} not recognized. Use 'SGD' or 'ADAM'.")
+
+scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
+avg_cost = np.zeros([total_epoch, 9], dtype=np.float32)
+vgg_lr = PRIMARY_LR # define learning rate for second-derivative step (theta_1^+)
+
+train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader_test=dataloader_test,
+                    total_epoch=total_epoch, train_batch=train_batch, test_batch=test_batch, batch_size=BATCH_SIZE,
+                    model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
+                    gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
+                    num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET,
+                    aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION, normalize_batch_weights=NORMALIZE_BATCH, entropy_loss_factor=ENTROPY_LOSS_FACTOR)
