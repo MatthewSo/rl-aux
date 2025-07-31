@@ -49,7 +49,7 @@ GPU = args.gpu
 log_print("ENTROPY LOSS FACTOR:", ENTROPY_LOSS_FACTOR)
 
 save_path = create_path_name(
-    agent_type="WAMAL",
+    agent_type="WAMAL_ENTROPY_ABLATION",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
