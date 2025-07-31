@@ -51,30 +51,22 @@ log_print("Primary Backbone:", args.primary_backbone)
 log_print("Label Backbone:", args.label_backbone)
 
 save_path = create_path_name_short(
-    agent_type="WAMAL_MIXED_ABLATION",
+    agent_type="WAMAL_MIXED_ABLATION_CIFAR10",
     primary_model_type=primary_model_type,
 )
 device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 log_print("GPU Device:", device)
 
-cifar100_train = CIFAR100(
-    root="./data/cifar100",
+train_set = CIFAR10(
+    root="./data/cifar10",
     train=True,
     transform=cifar_trans_train
 )
-cifar100_test= CIFAR100(
-    root="./data/cifar100",
+test_set = CIFAR10(
+    root="./data/cifar10",
     train=False,
-    transform=cifar_trans_test)
-
-
-train_set = CoarseLabelCIFAR100(
-    cifar100_train,
+    transform=cifar_trans_test
 )
-test_set = CoarseLabelCIFAR100(
-    cifar100_test,
-)
-
 
 ###  DON'T CHANGE THIS PART ###
 git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('ascii').strip()
