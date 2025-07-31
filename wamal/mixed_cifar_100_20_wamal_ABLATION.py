@@ -134,7 +134,8 @@ elif args.label_backbone.lower() == 'vgg16':
     label_model = label_model.to(device)
 elif args.label_backbone.lower() == 'none':
     log_print("No label backbone specified, using None.")
-    label_model = None
+    label_model = LabelWeightWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
+    label_model = label_model.to(device)
     SKIP_MAL = True
     LEARN_WEIGHTS = False
 else:
