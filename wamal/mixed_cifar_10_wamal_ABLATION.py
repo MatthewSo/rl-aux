@@ -14,6 +14,7 @@ from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
 import argparse
 from torchvision.models import resnet50, ResNet50_Weights
+from torchvision.models import resnet18, ResNet18_Weights
 
 AUX_WEIGHT = 0
 BATCH_SIZE = 100
@@ -121,6 +122,11 @@ if args.label_backbone.lower() == 'resnet50':
     resnet_model   = resnet50(weights=weights)
     label_model = LabelWeightWrapper(resnet_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
     label_model = label_model.to(device)
+elif args.label_backbone.lower() == 'resnet18':
+    weights = ResNet18_Weights.DEFAULT  # = IMAGENET1K_V2 weights
+    resnet_model = resnet18(weights=weights)
+    label_model = LabelWeightWrapper(resnet_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
+    label_model = label_model.to(device)
 elif args.label_backbone.lower() == 'vgg16':
     label_model = LabelWeightWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS), num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE )
     label_model = label_model.to(device)
@@ -146,7 +152,10 @@ if args.primary_backbone.lower() == 'resnet50':
     weights = ResNet50_Weights.DEFAULT          # = IMAGENET1K_V2 weights
     resnet_model   = resnet50(weights=weights)
     wamal_main_model = WamalWrapper(resnet_model,num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
-
+elif args.primary_backbone.lower() == 'resnet18':
+    weights = ResNet18_Weights.DEFAULT  # = IMAGENET1K_V2 weights
+    resnet_model = resnet18(weights=weights)
+    wamal_main_model = WamalWrapper(resnet_model, num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
 elif args.primary_backbone.lower() == 'vgg16':
     wamal_main_model = WamalWrapper(SimplifiedVGG16(device=device,num_primary_classes=PRIMARY_CLASS),num_primary=PRIMARY_CLASS, num_auxiliary=AUXILIARY_CLASS, input_shape=IMAGE_SHAPE)
 
