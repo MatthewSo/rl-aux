@@ -26,12 +26,13 @@ save_path = create_path_name(
     dataset="CIFAR100-20",
     learn_weights=False,
     optimizer="SGD",
-    full_dataset=True,
+    full_dataset=0,
     range=5.0,
-    aux_set_ratio=None,
-    normalize_batch=False,
-    batch_fraction=None,
+    aux_set_ratio=0,
+    normalize_batch=0,
+    batch_fraction=0,
     entropy_loss_factor=0.2,
+    learning_rate=0,
     run_id=RUN_ID
 )
 change_log_location(save_path)
