@@ -13,6 +13,10 @@ from utils.path_name import create_path_name
 
 AUX_WEIGHT = 1
 
+# GET RUN ID from ENV VAR
+import os
+RUN_ID = os.getenv('RUN_ID', 'default_run')
+
 save_path = create_path_name(
     agent_type="HUMAN_AUX",
     primary_model_type="VGG",
@@ -21,6 +25,14 @@ save_path = create_path_name(
     observation_feature_dimensions=0,
     dataset="CIFAR100-20",
     learn_weights=False,
+    optimizer="SGD",
+    full_dataset=True,
+    range=5.0,
+    aux_set_ratio=None,
+    normalize_batch=False,
+    batch_fraction=None,
+    entropy_loss_factor=0.2,
+    run_id=RUN_ID
 )
 change_log_location(save_path)
 epoch_performances=[]
