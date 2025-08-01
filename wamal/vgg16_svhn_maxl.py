@@ -9,6 +9,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.argparse import RUN_ID, GPU
 from wamal.networks.vgg_16 import SimplifiedVGG16
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
@@ -29,9 +30,14 @@ GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
+RANGE = 5
+USE_AUXILIARY_SET = True
+AUXILIARY_SET_RATIO = 0.1
+NORMALIZE_BATCH = False
+BATCH_FRACTION = None
 
 save_path = create_path_name(
-    agent_type="WAMAL-MAXL",
+    agent_type="WAMAL",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
@@ -39,8 +45,16 @@ save_path = create_path_name(
     dataset="SVHN",
     learn_weights=LEARN_WEIGHTS,
     optimizer=OPTIMIZER,
-    full_dataset=FULL_DATASET,)
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    full_dataset=FULL_DATASET,
+    learning_rate=PRIMARY_LR,
+    range=RANGE,
+    aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
+    normalize_batch=NORMALIZE_BATCH,
+    batch_fraction=BATCH_FRACTION,
+    entropy_loss_factor=0.2,
+    run_id=RUN_ID
+)
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 train_set = SVHN(
     root="./data/svhn",
@@ -117,4 +131,5 @@ train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL)
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET,
+                    aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION, normalize_batch_weights=NORMALIZE_BATCH)

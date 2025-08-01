@@ -9,6 +9,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.argparse import RUN_ID, GPU
 from wamal.networks.vgg_16 import SimplifiedVGG16
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
@@ -50,8 +51,10 @@ save_path = create_path_name(
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
+    entropy_loss_factor=0.2,
+    run_id=RUN_ID
 )
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 train_set = SVHN(
     root="./data/svhn",
