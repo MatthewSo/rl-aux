@@ -52,7 +52,7 @@ log_print("Primary Backbone:", args.primary_backbone)
 log_print("Label Backbone:", args.label_backbone)
 
 save_path = create_path_name_short(
-    agent_type="WAMAL_MIXED_ABLATION_CIFAR10",
+    agent_type="WAMAL_MIXED_ABLATION_CIFAR10_contin",
     primary_model_type=primary_model_type,
 )
 device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
