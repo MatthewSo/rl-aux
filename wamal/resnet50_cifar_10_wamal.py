@@ -8,6 +8,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.argparse import RUN_ID, GPU
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
 import torchvision.models as models
@@ -29,6 +30,13 @@ GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
+RANGE = 5
+USE_AUXILIARY_SET = False
+AUXILIARY_SET_RATIO = 0.0
+NORMALIZE_BATCH = False
+BATCH_FRACTION = None
+ENTROPY_LOSS_FACTOR = 0.2
+
 save_path = create_path_name(
     agent_type="WAMAL",
     primary_model_type="RESNET50",
@@ -37,8 +45,18 @@ save_path = create_path_name(
     observation_feature_dimensions=0,
     dataset="CIFAR10",
     learn_weights=LEARN_WEIGHTS,
+    optimizer=OPTIMIZER,
+    full_dataset=FULL_DATASET,
+    learning_rate=PRIMARY_LR,
+    range=5,
+    aux_set_ratio=None,
+    normalize_batch=False,
+    batch_fraction=None,
+    entropy_loss_factor=0.2,
+    run_id=RUN_ID
 )
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 train_set = CIFAR10(
     root="./data/cifar10",
