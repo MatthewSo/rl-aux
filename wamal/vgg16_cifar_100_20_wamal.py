@@ -39,7 +39,7 @@ BATCH_FRACTION = None
 ENTROPY_LOSS_FACTOR = 0.2
 
 save_path = create_path_name(
-    agent_type="WAMAL-MAXL",
+    agent_type="WAMAL",
     primary_model_type="VGG",
     train_ratio=TRAIN_RATIO,
     aux_weight=AUX_WEIGHT,
