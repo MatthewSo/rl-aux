@@ -9,11 +9,11 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.argparse import RUN_ID, GPU
 from wamal.networks.vit import get_vit, vit_collate
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
 from transformers import ViTForImageClassification, ViTImageProcessor
-
 torch.backends.cuda.enable_flash_sdp(False)
 torch.backends.cuda.enable_mem_efficient_sdp(False)
 torch.backends.cuda.enable_math_sdp(True)
@@ -24,6 +24,7 @@ PRIMARY_CLASS = 200
 AUXILIARY_CLASS = 1000
 SKIP_MAL = False
 LEARN_WEIGHTS = False
+
 TOTAL_EPOCH = 75
 PRIMARY_LR = 5e-4
 STEP_SIZE = 50
@@ -34,7 +35,7 @@ GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
-RANGE = 4.0
+RANGE = 5.0
 
 save_path = create_path_name(
     agent_type="WAMAL-MAXL",
@@ -48,8 +49,13 @@ save_path = create_path_name(
     full_dataset=FULL_DATASET,
     learning_rate=PRIMARY_LR,
     range=RANGE,
+    aux_set_ratio=None,
+    normalize_batch=False,
+    batch_fraction=None,
+    entropy_loss_factor=0.2,
+    run_id=RUN_ID
 )
-device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 train_set = CUB200(
     root="./data/cub200",
