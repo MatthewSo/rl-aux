@@ -9,7 +9,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
-from wamal.argparse import GPU
+from wamal.argparse import GPU, RUN_ID
 from wamal.networks.vit import get_vit, vit_collate
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
@@ -36,6 +36,11 @@ TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
 RANGE = 5.0
+USE_AUXILIARY_SET = False
+AUXILIARY_SET_RATIO = 0.0
+NORMALIZE_BATCH = False
+BATCH_FRACTION = None
+ENTROPY_LOSS_FACTOR = 0.2
 
 save_path = create_path_name(
     agent_type="WAMAL-SINGLE",
@@ -49,6 +54,11 @@ save_path = create_path_name(
     full_dataset=FULL_DATASET,
     learning_rate=PRIMARY_LR,
     range=RANGE,
+    aux_set_ratio=None,
+    normalize_batch=False,
+    batch_fraction=None,
+    entropy_loss_factor=0.2,
+    run_id=RUN_ID
 )
 device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
@@ -145,4 +155,5 @@ train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE)
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET,
+                    aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION, normalize_batch_weights=NORMALIZE_BATCH, entropy_loss_factor=ENTROPY_LOSS_FACTOR)
