@@ -9,6 +9,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.argparse import RUN_ID, GPU
 from wamal.auxilearn.train_auxilearn import train_auxilearn_network
 from wamal.networks.vit import get_vit, vit_collate
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
@@ -20,7 +21,7 @@ torch.backends.cuda.enable_mem_efficient_sdp(False)
 torch.backends.cuda.enable_math_sdp(True)
 
 AUX_WEIGHT = 0
-BATCH_SIZE = 20
+BATCH_SIZE = 30
 PRIMARY_CLASS = 37
 AUXILIARY_CLASS = 185
 SKIP_MAL = False
@@ -40,6 +41,7 @@ USE_AUXILIARY_SET = True
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
 BATCH_FRACTION = None
+ENTROPY_LOSS_FACTOR = 0.2
 
 save_path = create_path_name(
     agent_type="WAMAL_AUXILEARN",
@@ -56,8 +58,10 @@ save_path = create_path_name(
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
+    entropy_loss_factor=0.2,
+    run_id=RUN_ID
 )
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 train_set = OxfordIIITPet(
     root="./data/oxford_pet",

@@ -8,6 +8,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.argparse import RUN_ID, GPU
 from wamal.auxilearn.train_auxilearn import train_auxilearn_network
 from wamal.networks.vit import get_vit, vit_collate
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
@@ -35,10 +36,11 @@ TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
 FULL_DATASET = True
 RANGE = 5.0
-USE_AUXILIARY_SET = False
+USE_AUXILIARY_SET = True
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
 BATCH_FRACTION = None
+ENTROPY_LOSS_FACTOR = 0.2
 
 save_path = create_path_name(
     agent_type="WAMAL_AUXILEARN",
@@ -55,8 +57,10 @@ save_path = create_path_name(
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
+    entropy_loss_factor=ENTROPY_LOSS_FACTOR,
+    run_id=RUN_ID
 )
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 train_set = Food101(
     root="./data/food101",

@@ -8,6 +8,7 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.argparse import RUN_ID, GPU
 from wamal.networks.vit import get_vit, vit_collate
 from wamal.networks.wamal_wrapper import WamalWrapper, LabelWeightWrapper
 from wamal.train_network import train_wamal_network
@@ -24,20 +25,21 @@ AUXILIARY_CLASS = 505
 SKIP_MAL = False
 LEARN_WEIGHTS = True
 TOTAL_EPOCH = 75
-PRIMARY_LR = 5e-4 / 100
+PRIMARY_LR = 5e-4
 STEP_SIZE = 50
 IMAGE_SHAPE = (3, 224, 224)
 GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
-OPTIMIZER = "ADAM"
+OPTIMIZER = "SGD"
 FULL_DATASET = True
 RANGE = 5
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.1
 NORMALIZE_BATCH = False
 BATCH_FRACTION = None
+ENTROPY_LOSS_FACTOR = 0.2
 
 save_path = create_path_name(
     agent_type="WAMAL",
@@ -54,8 +56,10 @@ save_path = create_path_name(
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
+    entropy_loss_factor=ENTROPY_LOSS_FACTOR,
+    run_id=RUN_ID
 )
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 train_set = Food101(
     root="./data/food101",
@@ -149,5 +153,6 @@ train_wamal_network(device=device, dataloader_train=dataloader_train, dataloader
                     model=wamal_main_model, label_network=label_model, optimizer=optimizer, scheduler=scheduler,
                     gen_optimizer=gen_optimizer, gen_scheduler=gen_scheduler,
                     num_axuiliary_classes=AUXILIARY_CLASS, num_primary_classes=PRIMARY_CLASS,
-                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE,
-                    use_auxiliary_set=USE_AUXILIARY_SET, aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION, normalize_batch_weights=NORMALIZE_BATCH)
+                    save_path=save_path, use_learned_weights=LEARN_WEIGHTS, model_lr=vgg_lr, skip_mal=SKIP_MAL, val_range=RANGE, use_auxiliary_set=USE_AUXILIARY_SET,
+                    aux_split=AUXILIARY_SET_RATIO, batch_frac= BATCH_FRACTION, normalize_batch_weights=NORMALIZE_BATCH, entropy_loss_factor=ENTROPY_LOSS_FACTOR)
+
