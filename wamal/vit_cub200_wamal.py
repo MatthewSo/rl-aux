@@ -57,6 +57,7 @@ save_path = create_path_name(
     aux_set_ratio= AUXILIARY_SET_RATIO if USE_AUXILIARY_SET else None,
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
+    entropy_loss_factor=ENTROPY_LOSS_FACTOR,
     run_id=RUN_ID,
 )
 device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
