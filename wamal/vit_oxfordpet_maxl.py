@@ -57,7 +57,8 @@ save_path = create_path_name(
     normalize_batch=False,
     batch_fraction=None,
     entropy_loss_factor=0.2,
-    run_id=RUN_ID
+    run_id=RUN_ID,
+    range=RANGE
 )
 device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
