@@ -14,8 +14,48 @@ from torch.utils.data import DataLoader
 
 from train.model.performance import EpochPerformance
 from utils.log import log_print
-from wamal.networks.utils import model_fit, model_entropy  # reuse your focal-like loss + entropy. :contentReference[oaicite:9]{index=9}
+from wamal.networks.utils import model_entropy  # reuse your focal-like loss + entropy. :contentReference[oaicite:9]{index=9}
 
+def model_fit(pred: torch.Tensor,
+              target: torch.Tensor,
+              device,
+              pri: bool,
+              num_output: int,
+              eps: float = 1e-12) -> torch.Tensor:
+    """
+    Robust cross-entropy-like per-sample loss.
+    - pred: [N, C] probabilities (already softmaxed in our wrappers)
+    - target: hard labels [N] (pri=True) OR soft labels [N, C] (pri=False)
+    Returns: [N] loss per sample (no reduction).
+
+    Safe for rows where the soft target is all-zeros (ignored pixels): contributes 0.
+    """
+    pred = pred.to(device)
+    if target.dim() == 1:  # hard labels (primary)
+        y_idx = target.to(device, dtype=torch.long)
+        # Guard against stray invalid indices
+        C = pred.shape[1]
+        y_idx = y_idx.clamp_(0, C - 1)
+        # standard CE on probabilities
+        loss = -torch.log(pred.clamp_min(eps).gather(1, y_idx.view(-1, 1)).squeeze(1))
+        return loss
+
+    # soft labels (auxiliary)
+    y = target.to(device, dtype=pred.dtype)               # [N, C]
+    row_sum = y.sum(dim=1, keepdim=True)                  # [N, 1]
+    valid = (row_sum > 0)
+
+    # Renormalize only valid rows so they sum to 1; keep invalid rows as zeros.
+    y_norm = torch.where(
+        valid,
+        y / row_sum.clamp_min(eps),
+        torch.zeros_like(y)
+    )
+    # cross-entropy with soft targets
+    loss_vec = -(y_norm * torch.log(pred.clamp_min(eps))).sum(dim=1)
+    # rows that were invalid → contribute 0 loss
+    loss_vec = torch.where(valid.squeeze(1), loss_vec, torch.zeros_like(loss_vec))
+    return loss_vec
 
 def inner_sgd_update(model: torch.nn.Module, loss: torch.Tensor, lr: float):
     # identical logic to your dense-agnostic implementation in train_wamal_network. :contentReference[oaicite:10]{index=10}
@@ -164,6 +204,18 @@ def train_network_dense(
             # flatten valid pixels
             pri_flat, y_flat = _flatten_valid(pri_probs, y, ignore_index)
             aux_flat, gen_flat = _flatten_valid(aux_probs, gen_labels, ignore_index)
+            # Keep only rows with non-zero targets (skip ignored pixels completely)
+            if gen_flat.dim() == 2:  # soft labels
+                row_sum = gen_flat.sum(dim=1)
+                keep = row_sum > 0
+                if keep.any():
+                    aux_flat = aux_flat[keep]
+                    gen_flat = gen_flat[keep]
+                else:
+                    # No valid pixels in this batch for aux; skip aux loss cleanly
+                    aux_loss_vec = torch.zeros((), device=device)
+                    # and continue to next batch / compute only primary loss as you prefer
+                    # For the current structure, we can just proceed and let pri_loss dominate.
 
             if pri_flat.numel() == 0:
                 # batch contained only ignore pixels; skip to avoid NaNs
