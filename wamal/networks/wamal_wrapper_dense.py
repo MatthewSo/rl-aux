@@ -68,8 +68,6 @@ class WamalDenseWrapper(nn.Module):
 
         # Lazy build heads on first forward if feature_channels not given
         self._feat_ch = feature_channels
-        if feature_channels is not None:
-            self._build_heads(feature_channels)
 
     def _build_heads(self, ch: int, device=None, dtype=None):
         """
@@ -115,7 +113,7 @@ class WamalDenseWrapper(nn.Module):
         if params is None and buffers is None:
             feat = _get_feat_from_backbone(self.backbone, x, **kwargs)
             if not self._heads_built():
-                self._build_heads(feat.shape[1])
+                self._build_heads(feat.shape[1], device=feat.device, dtype=feat.dtype)
 
             pri = self.primary_head(feat)
             aux = self.auxiliary_head(feat)
@@ -142,7 +140,7 @@ class WamalDenseWrapper(nn.Module):
             feat = feat[0]
 
         if not self._heads_built():
-            self._build_heads(feat.shape[1])
+            self._build_heads(feat.shape[1], device=feat.device, dtype=feat.dtype)
 
         # Primary head overrides
         pri_ov = {k.split('primary_head.', 1)[1]: v for k, v in merged.items()
@@ -280,7 +278,8 @@ class LabelWeightDenseWrapper(nn.Module):
         if params is None and buffers is None:
             feat = _get_feat_from_backbone(self.backbone, x, **kwargs)
             if not self._heads_built():
-                self._build_heads(feat.shape[1])
+                self._build_heads(feat.shape[1], device=feat.device, dtype=feat.dtype)
+
 
             # predict at feature resolution, then upsample heads to input size
             sizeHW = x.shape[-2:]
