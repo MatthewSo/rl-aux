@@ -1,11 +1,14 @@
 # dataset_loaders/seg_transforms.py
 from __future__ import annotations
-from typing import Callable, Tuple
+from typing import Tuple
 import random
 import numpy as np
 from PIL import Image
+
 import torch
-import torchvision.transforms.functional as TF
+import torchvision.transforms.functional as F
+from torchvision.transforms import InterpolationMode as IM
+from torchvision.transforms import RandomCrop, CenterCrop
 
 IMGNET_MEAN = (0.485, 0.456, 0.406)
 IMGNET_STD  = (0.229, 0.224, 0.225)
@@ -20,26 +23,29 @@ class PairCompose:
 class PairResize:
     def __init__(self, size: int | Tuple[int,int]): self.size = size
     def __call__(self, img, mask):
-        img  = TF.resize(img,  self.size, interpolation=Image.BILINEAR)
-        mask = TF.resize(mask, self.size, interpolation=Image.NEAREST)
+        img  = F.resize(img,  self.size, interpolation=IM.BILINEAR)
+        mask = F.resize(mask, self.size, interpolation=IM.NEAREST)
         return img, mask
 
 class PairRandomCrop:
-    def __init__(self, size: int | Tuple[int,int]): self.size = size
+    def __init__(self, size: int | Tuple[int,int]):
+        self.size = (size, size) if isinstance(size, int) else size
     def __call__(self, img, mask):
-        i, j, h, w = TF.random_crop.get_params(img, output_size=(self.size, self.size) if isinstance(self.size, int) else self.size)
-        return TF.crop(img, i, j, h, w), TF.crop(mask, i, j, h, w)
+        i, j, h, w = RandomCrop.get_params(img, output_size=self.size)
+        return F.crop(img, i, j, h, w), F.crop(mask, i, j, h, w)
 
 class PairCenterCrop:
-    def __init__(self, size: int | Tuple[int,int]): self.size = size
+    def __init__(self, size: int | Tuple[int,int]):
+        self.size = (size, size) if isinstance(size, int) else size
     def __call__(self, img, mask):
-        return TF.center_crop(img, self.size), TF.center_crop(mask, self.size)
+        # CenterCrop as function exists, but simplest is reuse F.center_crop
+        return F.center_crop(img, self.size), F.center_crop(mask, self.size)
 
 class PairRandomHorizontalFlip:
     def __init__(self, p=0.5): self.p = p
     def __call__(self, img, mask):
         if random.random() < self.p:
-            return TF.hflip(img), TF.hflip(mask)
+            return F.hflip(img), F.hflip(mask)
         return img, mask
 
 class ToTensorNormalize:
@@ -47,8 +53,8 @@ class ToTensorNormalize:
     def __init__(self, mean=IMGNET_MEAN, std=IMGNET_STD):
         self.mean, self.std = mean, std
     def __call__(self, img, mask):
-        img_t  = TF.to_tensor(img)
-        img_t  = TF.normalize(img_t, self.mean, self.std)
+        img_t  = F.to_tensor(img)
+        img_t  = F.normalize(img_t, self.mean, self.std)
         mask_np = np.array(mask, dtype=np.int64)
         mask_t  = torch.from_numpy(mask_np)
         return img_t, mask_t
