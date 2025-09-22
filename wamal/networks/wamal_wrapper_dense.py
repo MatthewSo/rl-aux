@@ -71,19 +71,30 @@ class WamalDenseWrapper(nn.Module):
         if feature_channels is not None:
             self._build_heads(feature_channels)
 
-    def _build_heads(self, ch: int):
+    def _build_heads(self, ch: int, device=None, dtype=None):
+        """
+        Build primary/aux heads on the same device/dtype as the feature map.
+        Call with: self._build_heads(feat.shape[1], device=feat.device, dtype=feat.dtype)
+        """
+        kwargs = {}
+        if device is not None:
+            kwargs["device"] = device
+        if dtype is not None:
+            kwargs["dtype"] = dtype
+
         self.primary_head = nn.Sequential(
-            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=True),
+            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=True, **kwargs),
             nn.ReLU(inplace=True),
-            nn.Conv2d(ch, self.num_primary, kernel_size=1, bias=True),
+            nn.Conv2d(ch, self.num_primary, kernel_size=1, bias=True, **kwargs),
             nn.Softmax(dim=1),
         )
         self.auxiliary_head = nn.Sequential(
-            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=True),
+            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=True, **kwargs),
             nn.ReLU(inplace=True),
-            nn.Conv2d(ch, self.num_auxiliary, kernel_size=1, bias=True),
+            nn.Conv2d(ch, self.num_auxiliary, kernel_size=1, bias=True, **kwargs),
             nn.Softmax(dim=1),
         )
+
 
     def _heads_built(self) -> bool:
         return hasattr(self, "primary_head") and hasattr(self, "auxiliary_head")
@@ -219,18 +230,25 @@ class LabelWeightDenseWrapper(nn.Module):
             start += self.K
         self.register_buffer("_index_mask", index, persistent=False)
 
-    def _build_heads(self, ch: int):
+    def _build_heads(self, ch: int, device=None, dtype=None):
+        kwargs = {}
+        if device is not None:
+            kwargs["device"] = device
+        if dtype is not None:
+            kwargs["dtype"] = dtype
+
         self._classifier_head = nn.Sequential(
-            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=True),
+            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=True, **kwargs),
             nn.ReLU(inplace=True),
-            nn.Conv2d(ch, self.num_auxiliary, kernel_size=1, bias=True),
+            nn.Conv2d(ch, self.num_auxiliary, kernel_size=1, bias=True, **kwargs),
         )
         self._weight_head = nn.Sequential(
-            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=True),
+            nn.Conv2d(ch, ch, kernel_size=3, padding=1, bias=True, **kwargs),
             nn.ReLU(inplace=True),
-            nn.Conv2d(ch, 1, kernel_size=1, bias=True),
+            nn.Conv2d(ch, 1, kernel_size=1, bias=True, **kwargs),
             nn.Sigmoid(),
         )
+
 
     def _heads_built(self) -> bool:
         return (self._classifier_head is not None) and (self._weight_head is not None)
