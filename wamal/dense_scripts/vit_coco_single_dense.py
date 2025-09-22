@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 # joint img/mask transforms you already added for VOC; reuse here
 from dataset_loaders.seg_transforms import voc_train_transforms, voc_eval_transforms
 from dataset_loaders.coco_panoptic import COCOPanopticSeg
+from networks.primary.vit_2d_backbone import ViT2DBackbone
 
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
@@ -14,7 +15,6 @@ from wamal.argparse import GPU, RUN_ID  # same arg helper your other scripts use
 
 from wamal.train_network_dense import train_network_dense
 from wamal.networks.wamal_wrapper_dense import WamalDenseWrapper, LabelWeightDenseWrapper
-from wamal.networks.vit_dense_backbone import ViT2DBackbone
 
 # Keep parity with other ViT launchers
 torch.backends.cuda.enable_flash_sdp(False)
