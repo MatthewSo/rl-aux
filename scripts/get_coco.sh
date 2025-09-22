@@ -1,37 +1,44 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# === Config ===
+# =========================
+# COCO 2017 + Panoptic data
+# =========================
+# Usage:
+#   bash scripts/get_coco_panoptic_2017.sh                 # installs to ./data/coco
+#   bash scripts/get_coco_panoptic_2017.sh /path/to/dir    # custom target dir
+#
+# Requires ~40–45 GB free space.
+
 ROOT_DIR="${1:-./data/coco}"
 IMAGES_DIR="${ROOT_DIR}"
 ANN_DIR="${ROOT_DIR}/annotations"
 
-# Filenames we need
 TRAIN_ZIP="train2017.zip"
 VAL_ZIP="val2017.zip"
 PANOPTIC_ZIP="panoptic_annotations_trainval2017.zip"
 
-# Official URLs
-U_TRAIN_OFFICIAL="https://images.cocodataset.org/zips/${TRAIN_ZIP}"
-U_VAL_OFFICIAL="https://images.cocodataset.org/zips/${VAL_ZIP}"
-U_PANOPTIC_OFFICIAL="https://images.cocodataset.org/annotations/${PANOPTIC_ZIP}"
-
-# Fallback mirrors (Internet Archive)
+# Prefer archive.org first (your env worked with it), then official.
 U_TRAIN_ARCHIVE="https://archive.org/download/MSCoco2017/${TRAIN_ZIP}"
 U_VAL_ARCHIVE="https://archive.org/download/MSCoco2017/${VAL_ZIP}"
 U_PANOPTIC_ARCHIVE="https://archive.org/download/MSCoco2017/${PANOPTIC_ZIP}"
 
-# MD5 (from SJTU mirror page; used only for verification)
+U_TRAIN_OFFICIAL="https://images.cocodataset.org/zips/${TRAIN_ZIP}"
+U_VAL_OFFICIAL="https://images.cocodataset.org/zips/${VAL_ZIP}"
+U_PANOPTIC_OFFICIAL="https://images.cocodataset.org/annotations/${PANOPTIC_ZIP}"
+
+# MD5 checksums (publicly documented; used for integrity verification)
 MD5_TRAIN="cced6f7f71b7629ddf16f17bbcfab6b2"
 MD5_VAL="442b8da7639aecaf257c1dceb8ba8c80"
 MD5_PANOPTIC="4170db65fc022c9c296af880dbca6055"
 
-# Minimum size sanity checks (reject tiny HTML error pages)
+# Sanity thresholds (reject tiny HTML error pages)
 MIN_TRAIN_BYTES=$((10 * 1024 * 1024 * 1024))   # 10 GB
 MIN_VAL_BYTES=$((500 * 1024 * 1024))           # 500 MB
 MIN_PANOPTIC_BYTES=$((500 * 1024 * 1024))      # 500 MB
 
-# === Helpers ===
+mkdir -p "${IMAGES_DIR}" "${ANN_DIR}"
+
 dl_tool() {
   if command -v aria2c >/dev/null 2>&1; then
     echo "aria2c"
@@ -48,9 +55,11 @@ download_file() {
   echo "Downloading: ${url}"
   case "${tool}" in
     aria2c)
+      # parallel + resume
       aria2c -o "${out}.part" -x 8 -s 8 --max-connection-per-server=8 --continue=true "${url}" || return 1
       ;;
     curl)
+      # retry; quietly handle SSL issues by letting archive.org succeed
       curl -fL --retry 5 --retry-delay 3 -o "${out}.part" "${url}" || return 1
       ;;
     wget)
@@ -66,7 +75,6 @@ download_file() {
 }
 
 file_size() {
-  # cross-platform stat
   stat -c%s "$1" 2>/dev/null || stat -f%z "$1"
 }
 
@@ -74,7 +82,7 @@ check_size_at_least() {
   local file="$1" min_bytes="$2"
   local sz; sz="$(file_size "${file}")"
   if [[ -z "${sz}" || "${sz}" -lt "${min_bytes}" ]]; then
-    echo "File ${file} too small (${sz:-0} bytes) — likely an error page."
+    echo "File ${file} too small (${sz:-0} bytes) — likely an HTML error page."
     return 1
   fi
 }
@@ -103,103 +111,116 @@ safe_unzip() {
   if command -v unzip >/dev/null 2>&1; then
     unzip -q -o "${zip}" -d "${dest}"
   else
-    # Python fallback if unzip is not available
+    # Python fallback
     python3 - <<PY
-import zipfile, sys, os
-z = zipfile.ZipFile("${zip}")
+import zipfile
+z=zipfile.ZipFile("${zip}")
 z.extractall("${dest}")
 PY
   fi
 }
 
-# === Begin ===
-echo "Target root: ${ROOT_DIR}"
-mkdir -p "${IMAGES_DIR}" "${ANN_DIR}"
+# Generic download+verify helper
+ensure_zip() {
+  local out_dir="$1" zip_name="$2" min_bytes="$3" md5="$4" url1="$5" url2="$6"
 
-# 1) train2017.zip
+  if [[ -d "${out_dir}" ]]; then
+    echo "Found ${out_dir} — skipping download."
+    return 0
+  fi
+
+  local out_zip="${IMAGES_DIR}/${zip_name}"
+  if [[ -f "${out_zip}" ]]; then
+    echo "Found ${zip_name}; verifying…"
+    check_size_at_least "${out_zip}" "${min_bytes}" && check_md5 "${out_zip}" "${md5}" \
+      || { echo "Removing invalid ${zip_name}"; rm -f "${out_zip}"; }
+  fi
+  if [[ ! -f "${out_zip}" ]]; then
+    download_file "${url1}" "${out_zip}" || download_file "${url2}" "${out_zip}" || {
+      echo "ERROR: Could not download ${zip_name} from any source."; exit 1; }
+    check_size_at_least "${out_zip}" "${min_bytes}"
+    check_md5 "${out_zip}" "${md5}"
+  fi
+}
+
+echo "Target root: ${ROOT_DIR}"
+
+# 1) train2017
+ensure_zip "${IMAGES_DIR}/train2017" "${TRAIN_ZIP}" "${MIN_TRAIN_BYTES}" "${MD5_TRAIN}" \
+  "${U_TRAIN_ARCHIVE}" "${U_TRAIN_OFFICIAL}"
 if [[ ! -d "${IMAGES_DIR}/train2017" ]]; then
-  if [[ -f "${IMAGES_DIR}/${TRAIN_ZIP}" ]]; then
-    echo "Found ${TRAIN_ZIP}; verifying…"
-    check_size_at_least "${IMAGES_DIR}/${TRAIN_ZIP}" "${MIN_TRAIN_BYTES}" && check_md5 "${IMAGES_DIR}/${TRAIN_ZIP}" "${MD5_TRAIN}" \
-      || { echo "Removing invalid ${TRAIN_ZIP}"; rm -f "${IMAGES_DIR}/${TRAIN_ZIP}"; }
-  fi
-  if [[ ! -f "${IMAGES_DIR}/${TRAIN_ZIP}" ]]; then
-    download_file "${U_TRAIN_OFFICIAL}" "${IMAGES_DIR}/${TRAIN_ZIP}" || \
-    download_file "${U_TRAIN_ARCHIVE}"  "${IMAGES_DIR}/${TRAIN_ZIP}" || {
-      echo "ERROR: Could not download ${TRAIN_ZIP} from any source."; exit 1; }
-    check_size_at_least "${IMAGES_DIR}/${TRAIN_ZIP}" "${MIN_TRAIN_BYTES}"
-    check_md5 "${IMAGES_DIR}/${TRAIN_ZIP}" "${MD5_TRAIN}"
-  fi
   echo "Extracting ${TRAIN_ZIP}…"
   safe_unzip "${IMAGES_DIR}/${TRAIN_ZIP}" "${IMAGES_DIR}"
-else
-  echo "Found ${IMAGES_DIR}/train2017 — skipping download."
 fi
 
-# 2) val2017.zip
+# 2) val2017
+ensure_zip "${IMAGES_DIR}/val2017" "${VAL_ZIP}" "${MIN_VAL_BYTES}" "${MD5_VAL}" \
+  "${U_VAL_ARCHIVE}" "${U_VAL_OFFICIAL}"
 if [[ ! -d "${IMAGES_DIR}/val2017" ]]; then
-  if [[ -f "${IMAGES_DIR}/${VAL_ZIP}" ]]; then
-    echo "Found ${VAL_ZIP}; verifying…"
-    check_size_at_least "${IMAGES_DIR}/${VAL_ZIP}" "${MIN_VAL_BYTES}" && check_md5 "${IMAGES_DIR}/${VAL_ZIP}" "${MD5_VAL}" \
-      || { echo "Removing invalid ${VAL_ZIP}"; rm -f "${IMAGES_DIR}/${VAL_ZIP}"; }
-  fi
-  if [[ ! -f "${IMAGES_DIR}/${VAL_ZIP}" ]]; then
-    download_file "${U_VAL_OFFICIAL}" "${IMAGES_DIR}/${VAL_ZIP}" || \
-    download_file "${U_VAL_ARCHIVE}"  "${IMAGES_DIR}/${VAL_ZIP}" || {
-      echo "ERROR: Could not download ${VAL_ZIP} from any source."; exit 1; }
-    check_size_at_least "${IMAGES_DIR}/${VAL_ZIP}" "${MIN_VAL_BYTES}"
-    check_md5 "${IMAGES_DIR}/${VAL_ZIP}" "${MD5_VAL}"
-  fi
   echo "Extracting ${VAL_ZIP}…"
   safe_unzip "${IMAGES_DIR}/${VAL_ZIP}" "${IMAGES_DIR}"
-else
-  echo "Found ${IMAGES_DIR}/val2017 — skipping download."
 fi
 
-# 3) panoptic_annotations_trainval2017.zip
-if [[ ! -d "${ANN_DIR}/panoptic_train2017" || ! -d "${ANN_DIR}/panoptic_val2017" || ! -f "${ANN_DIR}/panoptic_train2017.json" || ! -f "${ANN_DIR}/panoptic_val2017.json" ]]; then
-  if [[ -f "${ROOT_DIR}/${PANOPTIC_ZIP}" ]]; then
+# 3) Panoptic annotations (robust extraction)
+if [[ ! -d "${ANN_DIR}/panoptic_train2017" || ! -d "${ANN_DIR}/panoptic_val2017" || \
+      ! -f "${ANN_DIR}/panoptic_train2017.json" || ! -f "${ANN_DIR}/panoptic_val2017.json" ]]; then
+
+  local_zip="${ROOT_DIR}/${PANOPTIC_ZIP}"
+  if [[ -f "${local_zip}" ]]; then
     echo "Found ${PANOPTIC_ZIP}; verifying…"
-    check_size_at_least "${ROOT_DIR}/${PANOPTIC_ZIP}" "${MIN_PANOPTIC_BYTES}" && check_md5 "${ROOT_DIR}/${PANOPTIC_ZIP}" "${MD5_PANOPTIC}" \
-      || { echo "Removing invalid ${PANOPTIC_ZIP}"; rm -f "${ROOT_DIR}/${PANOPTIC_ZIP}"; }
+    check_size_at_least "${local_zip}" "${MIN_PANOPTIC_BYTES}" && check_md5 "${local_zip}" "${MD5_PANOPTIC}" \
+      || { echo "Removing invalid ${PANOPTIC_ZIP}"; rm -f "${local_zip}"; }
   fi
-  if [[ ! -f "${ROOT_DIR}/${PANOPTIC_ZIP}" ]]; then
-    download_file "${U_PANOPTIC_OFFICIAL}" "${ROOT_DIR}/${PANOPTIC_ZIP}" || \
-    download_file "${U_PANOPTIC_ARCHIVE}"  "${ROOT_DIR}/${PANOPTIC_ZIP}" || {
+  if [[ ! -f "${local_zip}" ]]; then
+    download_file "${U_PANOPTIC_ARCHIVE}" "${local_zip}" || download_file "${U_PANOPTIC_OFFICIAL}" "${local_zip}" || {
       echo "ERROR: Could not download ${PANOPTIC_ZIP} from any source."; exit 1; }
-    check_size_at_least "${ROOT_DIR}/${PANOPTIC_ZIP}" "${MIN_PANOPTIC_BYTES}"
-    check_md5 "${ROOT_DIR}/${PANOPTIC_ZIP}" "${MD5_PANOPTIC}"
+    check_size_at_least "${local_zip}" "${MIN_PANOPTIC_BYTES}"
+    check_md5 "${local_zip}" "${MD5_PANOPTIC}"
   fi
 
   echo "Extracting ${PANOPTIC_ZIP}…"
   TMP_EXTRACT="${ROOT_DIR}/.panoptic_extract"
-  rm -rf "${TMP_EXTRACT}"
-  mkdir -p "${TMP_EXTRACT}"
-  safe_unzip "${ROOT_DIR}/${PANOPTIC_ZIP}" "${TMP_EXTRACT}"
+  rm -rf "${TMP_EXTRACT}"; mkdir -p "${TMP_EXTRACT}"
+  safe_unzip "${local_zip}" "${TMP_EXTRACT}"
 
-  # Find panoptic dirs and JSONs regardless of exact nesting in the zip
   mkdir -p "${ANN_DIR}"
-  # move dirs
-  for d in panoptic_train2017 panoptic_val2017; do
-    found_dir="$(find "${TMP_EXTRACT}" -type d -name "${d}" | head -n 1 || true)"
-    if [[ -n "${found_dir}" ]]; then
-      rm -rf "${ANN_DIR}/${d}"
-      mv "${found_dir}" "${ANN_DIR}/${d}"
-    else
-      echo "ERROR: Could not locate directory ${d} in extracted panoptic zip."
+
+  # helpers to robustly find paths regardless of nesting
+  find_one_dir() {
+    local base="$1" name="$2"
+    local p
+    p="$(find "${base}" -type d -name "${name}" -print -quit || true)"
+    if [[ -z "${p}" ]]; then
+      echo "ERROR: Could not locate directory ${name} in extracted panoptic zip."
+      echo "Archive content preview (top 3 levels):"
+      find "${base}" -maxdepth 3 -print | sed 's/^/  /' | head -n 200
       exit 1
     fi
-  done
-  # move JSONs
-  for j in panoptic_train2017.json panoptic_val2017.json; do
-    found_json="$(find "${TMP_EXTRACT}" -type f -name "${j}" | head -n 1 || true)"
-    if [[ -n "${found_json}" ]]; then
-      mv "${found_json}" "${ANN_DIR}/${j}"
-    else
-      echo "ERROR: Could not locate ${j} in extracted panoptic zip."
+    echo "${p}"
+  }
+  find_one_json() {
+    local base="$1" name="$2"
+    local p
+    p="$(find "${base}" -type f -name "${name}" -print -quit || true)"
+    if [[ -z "${p}" ]]; then
+      echo "ERROR: Could not locate file ${name} in extracted panoptic zip."
+      echo "Archive content preview (top 3 levels):"
+      find "${base}" -maxdepth 3 -print | sed 's/^/  /' | head -n 200
       exit 1
     fi
-  done
+    echo "${p}"
+  }
+
+  DIR_TRN="$(find_one_dir  "${TMP_EXTRACT}" "panoptic_train2017")"
+  DIR_VAL="$(find_one_dir  "${TMP_EXTRACT}" "panoptic_val2017")"
+  JSON_TRN="$(find_one_json "${TMP_EXTRACT}" "panoptic_train2017.json")"
+  JSON_VAL="$(find_one_json "${TMP_EXTRACT}" "panoptic_val2017.json")"
+
+  rm -rf "${ANN_DIR}/panoptic_train2017" "${ANN_DIR}/panoptic_val2017"
+  mv "${DIR_TRN}" "${ANN_DIR}/panoptic_train2017"
+  mv "${DIR_VAL}" "${ANN_DIR}/panoptic_val2017"
+  mv -f "${JSON_TRN}" "${ANN_DIR}/panoptic_train2017.json"
+  mv -f "${JSON_VAL}" "${ANN_DIR}/panoptic_val2017.json"
   rm -rf "${TMP_EXTRACT}"
 else
   echo "Found panoptic folders & JSONs — skipping download."
