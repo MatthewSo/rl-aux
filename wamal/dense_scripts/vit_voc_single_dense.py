@@ -77,13 +77,13 @@ train_set = VOCSegmentation(
     root="./data/voc",
     train=True,
     transforms=voc_train_transforms(resize=256, crop=224),   # fixed 224 so ViT pos-emb stays valid
-    download=True,
+    download=False,
 )
 val_set = VOCSegmentation(
     root="./data/voc",
     train=False,
     transforms=voc_eval_transforms(resize=256, crop=224),
-    download=True,
+    download=False,
 )
 
 dataloader_train = DataLoader(
