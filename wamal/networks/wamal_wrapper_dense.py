@@ -1,7 +1,7 @@
 # wamal/networks/wamal_wrapper_dense.py
 
 from __future__ import annotations
-from typing import Callable, Tuple, OrderedDict as OD, Optional, Dict, Any
+from typing import Callable, Tuple, OrderedDict as OD, Optional
 from pathlib import Path
 import importlib
 
@@ -16,31 +16,28 @@ def _get_feat_from_backbone(backbone: nn.Module,
                             x: torch.Tensor,
                             **kwargs) -> torch.Tensor:
     """
-    Normalize the output across common segmentation/classification backbones.
-
-    Returns a 4D feature map [B, F, H, W].
+    Normalize outputs across common backbones and return a 4D feature map [B, F, H, W].
     """
     out = backbone(x, **kwargs)
 
-    # HuggingFace or torchvision classification with logits - accept [B,*,*]
+    # HuggingFace models (e.g., ViTModel) may return ModelOutput with logits
     if isinstance(out, ModelOutput):
         out = out.logits
 
-    # torchvision segmentation returns dict with 'out'
+    # torchvision segmentation returns dict with "out"
     if isinstance(out, dict) and "out" in out:
         out = out["out"]
 
-    # If the backbone returned a tuple/list, take first (common for features)
+    # some models return tuple/list, take first entry
     if isinstance(out, (tuple, list)):
         out = out[0]
 
+    # classification backbone with [B, D] -> convert to [B, D, 1, 1]
     if out.dim() == 2:
-        # [B, D] -> reshape to [B, D, 1, 1] so 1×1 conv heads still work
         out = out[:, :, None, None]
 
     if out.dim() != 4:
-        raise ValueError(f"Backbone returned tensor with dim={out.dim()}, "
-                         "expected 4D feature map.")
+        raise ValueError(f"Backbone returned tensor with dim={out.dim()}, expected 4D [B,C,H,W].")
 
     return out
 
@@ -50,7 +47,7 @@ class WamalDenseWrapper(nn.Module):
     Dense (segmentation) multi-head wrapper:
       - Primary head: per-pixel C logits + softmax
       - Auxiliary head: per-pixel (C * K) logits + softmax
-    Heads are simple 1x1 convs on top of the backbone feature map.
+    Heads are simple 1x1/3x3 conv stacks on top of the backbone feature map.
     """
     def __init__(self,
                  backbone: nn.Module,
@@ -66,8 +63,10 @@ class WamalDenseWrapper(nn.Module):
         self.input_shape = input_shape
         self.upsample_to_input = upsample_to_input
 
-        # Lazy build heads on first forward if feature_channels not given
+        # Lazy-build heads on first forward so they inherit the feature device/dtype.
         self._feat_ch = feature_channels
+        self.primary_head: Optional[nn.Module] = None
+        self.auxiliary_head: Optional[nn.Module] = None
 
     def _build_heads(self, ch: int, device=None, dtype=None):
         """
@@ -93,9 +92,8 @@ class WamalDenseWrapper(nn.Module):
             nn.Softmax(dim=1),
         )
 
-
     def _heads_built(self) -> bool:
-        return hasattr(self, "primary_head") and hasattr(self, "auxiliary_head")
+        return (self.primary_head is not None) and (self.auxiliary_head is not None)
 
     def _maybe_upsample(self, y: torch.Tensor, sizeHW: Tuple[int, int]) -> torch.Tensor:
         if self.upsample_to_input and y.shape[-2:] != sizeHW:
@@ -109,21 +107,27 @@ class WamalDenseWrapper(nn.Module):
                 **kwargs):
         """
         If params/buffers are provided, do a functional call (used by MAL’s inner update).
+        Returns:
+          primary_probs : [B, C,   H, W]
+          aux_probs     : [B, C*K, H, W]
         """
         if params is None and buffers is None:
             feat = _get_feat_from_backbone(self.backbone, x, **kwargs)
             if not self._heads_built():
                 self._build_heads(feat.shape[1], device=feat.device, dtype=feat.dtype)
+            else:
+                # Safety in case model was moved after build
+                self.primary_head.to(feat.device, dtype=feat.dtype)
+                self.auxiliary_head.to(feat.device, dtype=feat.dtype)
 
-            pri = self.primary_head(feat)
-            aux = self.auxiliary_head(feat)
+            pri = self.primary_head(feat)  # [B, C,   h, w]
+            aux = self.auxiliary_head(feat)  # [B, C*K, h, w]
 
-            # by default, upsample to input spatial size
             pri = self._maybe_upsample(pri, x.shape[-2:])
             aux = self._maybe_upsample(aux, x.shape[-2:])
             return pri, aux
 
-        # functional_call path (for fast-weights usage)
+        # functional_call path (fast-weights)
         params = params or {}
         buffers = buffers or {}
         merged = {**params, **buffers}
@@ -141,6 +145,9 @@ class WamalDenseWrapper(nn.Module):
 
         if not self._heads_built():
             self._build_heads(feat.shape[1], device=feat.device, dtype=feat.dtype)
+        else:
+            self.primary_head.to(feat.device, dtype=feat.dtype)
+            self.auxiliary_head.to(feat.device, dtype=feat.dtype)
 
         # Primary head overrides
         pri_ov = {k.split('primary_head.', 1)[1]: v for k, v in merged.items()
@@ -194,10 +201,10 @@ class WamalDenseWrapper(nn.Module):
 class LabelWeightDenseWrapper(nn.Module):
     """
     Dense (segmentation) label generator φ:
-      - Produces per-pixel auxiliary logits with masked softmax (C*K channels).
-      - Optionally produces a per-pixel weight map in [0,1] (1 channel).
+      - Produces per-pixel auxiliary probabilities with masked softmax (C*K channels).
+      - Produces a per-pixel weight map in [0,1] (1 channel).
     By default, K=5 sub-labels per original class.
-    Mirrors the logic of LabelWeightWrapper (classification). :contentReference[oaicite:4]{index=4}
+    Mirrors the logic of classification LabelWeightWrapper, adapted per pixel.
     """
     def __init__(self,
                  backbone: nn.Module,
@@ -215,13 +222,16 @@ class LabelWeightDenseWrapper(nn.Module):
         self.input_shape = input_shape
         self.upsample_to_input = upsample_to_input
 
-        self._feat_ch = None
-        self._classifier_head = None
-        self._weight_head = None
+        self._classifier_head: Optional[nn.Module] = None
+        self._weight_head: Optional[nn.Module] = None
 
-        # fixed class-to-subclass mapping mask [C, C*K]
-        # index[i, start_i : start_i + K] = 1
+        # fixed class-to-subclass mapping mask [C, C*K] with contiguous K slots
         index = torch.zeros(num_primary, num_auxiliary)
+        start = 0
+        for _ in range(num_primary):
+            index[:, start:start+self.K]  # just to clarify span; fill below
+            start += self.K
+        # fill mask
         start = 0
         for i in range(num_primary):
             index[i, start:start+self.K] = 1.0
@@ -247,13 +257,12 @@ class LabelWeightDenseWrapper(nn.Module):
             nn.Sigmoid(),
         )
 
-
     def _heads_built(self) -> bool:
         return (self._classifier_head is not None) and (self._weight_head is not None)
 
     @staticmethod
     def _mask_softmax(logits: torch.Tensor, mask: torch.Tensor, dim: int = 1) -> torch.Tensor:
-        # logits: [B, C*K, H, W], mask: same shape with 0/1 over channels per pixel
+        # logits: [B, C*K, H, W], mask: [B, C*K, H, W] with 0/1 entries
         exp = torch.exp(logits) * mask
         denom = exp.sum(dim=dim, keepdim=True).clamp_min_(1e-12)
         return exp / denom
@@ -269,7 +278,7 @@ class LabelWeightDenseWrapper(nn.Module):
                 params: Optional[OD[str, torch.Tensor]] = None,
                 buffers: Optional[OD[str, torch.Tensor]] = None,
                 ignore_index: int = 255,
-                **kwargs) -> tuple[torch.Tensor, torch.Tensor]:
+                **kwargs) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Returns:
           gen_labels : [B, C*K, H, W] (soft labels after masked softmax)
@@ -279,27 +288,40 @@ class LabelWeightDenseWrapper(nn.Module):
             feat = _get_feat_from_backbone(self.backbone, x, **kwargs)
             if not self._heads_built():
                 self._build_heads(feat.shape[1], device=feat.device, dtype=feat.dtype)
+            else:
+                self._classifier_head.to(feat.device, dtype=feat.dtype)
+                self._weight_head.to(feat.device, dtype=feat.dtype)
 
-
-            # predict at feature resolution, then upsample heads to input size
+            # predict at feature resolution, then (optionally) upsample to input size
             sizeHW = x.shape[-2:]
             feat = self._maybe_upsample_feat(feat, sizeHW)
 
-            logits = self._classifier_head(feat)          # [B, C*K, H, W]
-            weights = self._weight_head(feat)             # [B, 1,   H, W]
+            logits  = self._classifier_head(feat)          # [B, C*K, H, W]
+            weights = self._weight_head(feat)              # [B, 1,   H, W]
 
-            # build pixel-wise mask based on GT y
+            # build pixel-wise mask based on GT y (handle ignore_index safely)
             y_up = y
             if y_up.shape[-2:] != logits.shape[-2:]:
                 y_up = F.interpolate(y.unsqueeze(1).float(), size=logits.shape[-2:], mode="nearest").long().squeeze(1)
 
             B, CK, H, W = logits.shape
-            index = self._index_mask.to(y_up.device)      # [C, C*K]
-            mask = index[y_up.view(-1)].view(B, H, W, CK).permute(0, 3, 1, 2).contiguous()
+            C = self.num_primary
+            index = self._index_mask.to(y_up.device)       # [C, C*K]
+
+            valid  = (y_up != ignore_index)
+            y_safe = y_up.clone()
+            y_safe[~valid] = 0        # safe class id for ignored pixels
+            y_safe.clamp_(min=0, max=C-1)
+
+            mask = index[y_safe.view(-1)].view(B, H, W, CK).permute(0, 3, 1, 2).contiguous()
+
             gen_labels = self._mask_softmax(logits, mask, dim=1)
+            gen_labels = gen_labels * valid.unsqueeze(1)   # zero out ignored pixels
+            weights    = weights * valid.unsqueeze(1)
+
             return gen_labels, weights
 
-        # functional_call path for MAL
+        # -------- functional_call path (for MAL) --------
         params = params or {}
         buffers = buffers or {}
         merged = {**params, **buffers}
@@ -319,6 +341,12 @@ class LabelWeightDenseWrapper(nn.Module):
             feat = F.interpolate(feat, size=sizeHW, mode="bilinear", align_corners=False)
 
         # heads
+        if not self._heads_built():
+            self._build_heads(feat.shape[1], device=feat.device, dtype=feat.dtype)
+        else:
+            self._classifier_head.to(feat.device, dtype=feat.dtype)
+            self._weight_head.to(feat.device, dtype=feat.dtype)
+
         cls_ov = {k.split('_classifier_head.', 1)[1]: v for k, v in merged.items()
                   if k.startswith('_classifier_head.')}
         logits = functional_call(self._classifier_head, cls_ov, (feat,))
@@ -330,23 +358,22 @@ class LabelWeightDenseWrapper(nn.Module):
         y_up = y
         if y_up.shape[-2:] != logits.shape[-2:]:
             y_up = F.interpolate(y.unsqueeze(1).float(), size=logits.shape[-2:], mode="nearest").long().squeeze(1)
+
         B, CK, H, W = logits.shape
+        C = self.num_primary
         index = self._index_mask.to(y_up.device)
 
-        valid = (y_up != ignore_index)  # add 'ignore_index' as an argument defaulting to 255
+        valid  = (y_up != ignore_index)
         y_safe = y_up.clone()
-        y_safe[~valid] = 0  # put any valid class id to avoid OOB indexing
+        y_safe[~valid] = 0
+        y_safe.clamp_(min=0, max=C-1)
 
-        index = self._index_mask.to(y_up.device)         # [C, C*K]
-        mask   = index[y_safe.view(-1)].view(B, H, W, CK).permute(0, 3, 1, 2).contiguous()
+        mask = index[y_safe.view(-1)].view(B, H, W, CK).permute(0, 3, 1, 2).contiguous()
 
-        # masked softmax, then zero-out ignored pixels so their aux loss is exactly 0
         gen_labels = self._mask_softmax(logits, mask, dim=1)
-        gen_labels *= valid.unsqueeze(1)                 # zero everywhere invalid
-        weights = self._weight_head(feat) * valid.unsqueeze(1)
+        gen_labels = gen_labels * valid.unsqueeze(1)
+        weights    = weights * valid.unsqueeze(1)
 
-        mask = index[y_up.view(-1)].view(B, H, W, CK).permute(0, 3, 1, 2).contiguous()
-        gen_labels = self._mask_softmax(logits, mask, dim=1)
         return gen_labels, weights
 
     def save(self, path: str | Path, **extra):
