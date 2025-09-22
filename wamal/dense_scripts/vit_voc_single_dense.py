@@ -13,6 +13,7 @@ from networks.primary.vit_2d_backbone import ViT2DBackbone
 # === Repo utilities & training loop ===
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
+from wamal.argparse import GPU, RUN_ID
 
 from wamal.train_network_dense import train_network_dense
 from wamal.networks.wamal_wrapper_dense import WamalDenseWrapper, LabelWeightDenseWrapper
@@ -67,8 +68,9 @@ SAVE_PATH = create_path_name(
     normalize_batch=NORMALIZE_BATCH,
     batch_fraction=BATCH_FRACTION,
     entropy_loss_factor=ENTROPY_LOSS_FACTOR,
+    run_id=RUN_ID
 )
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 
 # ------------------- DATA -------------------
 train_set = VOCSegmentation(
