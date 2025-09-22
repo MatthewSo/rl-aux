@@ -41,7 +41,7 @@ GEN_OPTIMIZER_LR       = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 
 TRAIN_RATIO            = 1
-OPTIMIZER              = "ADAM"            # "SGD" or "ADAM" (your ViT scripts often used SGD/Adam)
+OPTIMIZER              = "SGD"            # "SGD" or "ADAM" (your ViT scripts often used SGD/Adam)
 FULL_DATASET           = True
 RANGE                  = 5.0
 USE_AUXILIARY_SET      = False
