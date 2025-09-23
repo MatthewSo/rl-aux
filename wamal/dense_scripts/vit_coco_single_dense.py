@@ -1,9 +1,9 @@
 # wamal/dense_scripts/vit_coco_wamal_dense.py
+from wamal.argparse import GPU, RUN_ID  # same arg helper your other scripts use
 import os
 os.environ.setdefault("CUDA_DEVICE_ORDER", "PCI_BUS_ID")
 # The script already parses --gpu N; pin it here so CUDA context is created once & correctly:
 # (Replace '0' with the parsed GPU index string)
-os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 # Optional but helpful when debugging:
 os.environ.setdefault("CUDA_LAUNCH_BLOCKING", "1")
@@ -19,7 +19,6 @@ from networks.primary.vit_2d_backbone import ViT2DBackbone
 
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
-from wamal.argparse import GPU, RUN_ID  # same arg helper your other scripts use
 
 from wamal.train_network_dense import train_network_dense
 from wamal.networks.wamal_wrapper_dense import WamalDenseWrapper, LabelWeightDenseWrapper
