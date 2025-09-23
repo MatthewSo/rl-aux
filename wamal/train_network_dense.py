@@ -1,5 +1,4 @@
 # wamal/train_network_dense.py
-
 from __future__ import annotations
 from typing import Optional, Tuple
 import os
@@ -14,8 +13,9 @@ from torch.utils.data import DataLoader
 
 from train.model.performance import EpochPerformance
 from utils.log import log_print
-from wamal.networks.utils import model_entropy  # reuse your focal-like loss + entropy. :contentReference[oaicite:9]{index=9}
+from wamal.networks.utils import model_entropy  # entropy reg on aux labels
 
+# ---------- Robust focal-like loss for hard (primary) and soft (aux) targets ----------
 def model_fit(pred: torch.Tensor,
               target: torch.Tensor,
               device,
@@ -57,8 +57,9 @@ def model_fit(pred: torch.Tensor,
     loss_vec = torch.where(valid.squeeze(1), loss_vec, torch.zeros_like(loss_vec))
     return loss_vec
 
+
 def inner_sgd_update(model: torch.nn.Module, loss: torch.Tensor, lr: float):
-    # identical logic to your dense-agnostic implementation in train_wamal_network. :contentReference[oaicite:10]{index=10}
+    # identical logic to your dense-agnostic implementation
     fast = {n: p for n, p in model.named_parameters()}
     grads = torch.autograd.grad(loss, model.parameters(), create_graph=True)
     return {n: w - lr * g for (n, w), g in zip(fast.items(), grads)}
@@ -82,7 +83,7 @@ def _flatten_valid(pr: torch.Tensor,
         y_f  = tgt[valid]                        # (N,)
         return pr_f, y_f
     else:              # soft labels: [B, C, H, W]
-        # assume soft labels already zeroed-out at ignored pixels (user-controlled if needed)
+        # assume soft labels already zeroed-out at ignored pixels
         pr_f = pr.permute(0, 2, 3, 1).reshape(-1, C)
         y_f  = tgt.permute(0, 2, 3, 1).reshape(-1, C)
         return pr_f, y_f
@@ -101,6 +102,31 @@ def _pixel_accuracy(pred_softmax: torch.Tensor, y: torch.Tensor, ignore_index: i
         return 0.0
     correct = (pred[valid] == y[valid]).sum().item()
     return correct / total
+
+
+def _align_aux_rows(
+        aux_flat: torch.Tensor,            # (N, CK) from model
+        gen_flat: torch.Tensor,            # (N, CK) soft labels from label net
+        aux_w: torch.Tensor,               # (B, 1, H, W) per-pixel weights
+        aux_probs_spatial: torch.Tensor,   # (B, CK, H, W) to know spatial size
+):
+    """
+    1) Flattens aux_w to (N, 1) in the same order as aux/gen flattening.
+    2) Applies the same keep mask (gen_flat.sum>0) to aux_flat, gen_flat, and w_flat.
+    Returns: aux_kept (M,CK), gen_kept (M,CK), w_kept (M,1), keep_mask (N,)
+    """
+    # Ensure spatial match before flattening weights
+    if aux_w.shape[-2:] != aux_probs_spatial.shape[-2:]:
+        aux_w = F.interpolate(aux_w, size=aux_probs_spatial.shape[-2:], mode="bilinear", align_corners=False)
+    w_flat = aux_w.permute(0, 2, 3, 1).reshape(-1, 1)  # (N,1)
+
+    row_sum = gen_flat.sum(dim=1)
+    keep = row_sum > 0
+    if keep.any():
+        return aux_flat[keep], gen_flat[keep], w_flat[keep], keep
+    else:
+        # empty tensors with correct dims
+        return aux_flat[:0], gen_flat[:0], w_flat[:0], keep
 
 
 def train_network_dense(
@@ -131,11 +157,7 @@ def train_network_dense(
 ):
     """
     Dense WAMAL training loop (segmentation).
-    Mirrors the classification training (wamal) but over pixels.
-    - Primary loss: focal-like on primary per-pixel probabilities (via model_fit).
-    - Auxiliary loss: focal-like against generated soft labels per pixel (via model_fit).
-    - Meta step: inner SGD update for model parameters, outer step for label_network with entropy reg.
-    References: your wamal classification trainer and utils. :contentReference[oaicite:11]{index=11} :contentReference[oaicite:12]{index=12}
+    Mirrors the classification training but over pixels.
     """
     os.makedirs(save_path, exist_ok=True)
 
@@ -202,48 +224,40 @@ def train_network_dense(
             gen_labels, aux_w    = label_network(imgs, y)            # per-pixel soft labels + weights
 
             # flatten valid pixels
-            pri_flat, y_flat = _flatten_valid(pri_probs, y, ignore_index)
-            aux_flat, gen_flat = _flatten_valid(aux_probs, gen_labels, ignore_index)
-            # Keep only rows with non-zero targets (skip ignored pixels completely)
-            if gen_flat.dim() == 2:  # soft labels
-                row_sum = gen_flat.sum(dim=1)
-                keep = row_sum > 0
-                if keep.any():
-                    aux_flat = aux_flat[keep]
-                    gen_flat = gen_flat[keep]
-                else:
-                    # No valid pixels in this batch for aux; skip aux loss cleanly
-                    aux_loss_vec = torch.zeros((), device=device)
-                    # and continue to next batch / compute only primary loss as you prefer
-                    # For the current structure, we can just proceed and let pri_loss dominate.
+            pri_flat, y_flat     = _flatten_valid(pri_probs, y,          ignore_index)
+            aux_flat, gen_flat   = _flatten_valid(aux_probs, gen_labels, ignore_index)
 
             if pri_flat.numel() == 0:
                 # batch contained only ignore pixels; skip to avoid NaNs
                 continue
 
+            # primary loss
             pri_loss_vec = model_fit(pri_flat, y_flat, device, pri=True,  num_output=num_primary_classes)
-            aux_loss_vec = model_fit(aux_flat, gen_flat, device, pri=False, num_output=num_auxiliary_classes)
 
+            # auxiliary loss (aligned rows + weights)
             if use_learned_weights:
-                # per-pixel weights -> broadcast to flattened positions
-                # bring weights to input shape of aux_probs already handled in label_network
-                w = aux_w
-                if w.shape[-2:] != aux_probs.shape[-2:]:
-                    w = F.interpolate(w, size=aux_probs.shape[-2:], mode="bilinear", align_corners=False)
-                w_flat = w.permute(0, 2, 3, 1).reshape(-1, 1)
-                # keep only positions consistent with aux_flat/gen_flat
-                # (when using ignore_index, they remain aligned because we didn't drop positions for soft labels)
-                weight_factors = torch.pow(2.0, 2 * val_range * w_flat - val_range)
-                if normalize_batch_weights and weight_factors.numel() > 0:
-                    weight_factors = weight_factors / (weight_factors.mean() + 1e-12)
-                aux_loss = (aux_loss_vec * weight_factors.squeeze(1)) .mean()
+                aux_kept, gen_kept, w_kept, keep = _align_aux_rows(aux_flat, gen_flat, aux_w, aux_probs)
             else:
-                aux_loss = aux_loss_vec.mean()
+                # still need to drop zero-target rows
+                row_sum = gen_flat.sum(dim=1)
+                keep = row_sum > 0
+                aux_kept = aux_flat[keep]
+                gen_kept = gen_flat[keep]
 
-            if skip_mal:
-                loss = pri_loss_vec.mean()
+            if gen_kept.numel() == 0:
+                aux_loss = torch.zeros((), device=device)
             else:
-                loss = pri_loss_vec.mean() + aux_loss
+                aux_loss_vec = model_fit(aux_kept, gen_kept, device, pri=False, num_output=num_auxiliary_classes)
+                if use_learned_weights:
+                    weight_factors = torch.pow(2.0, 2 * val_range * w_kept - val_range)  # (M,1)
+                    if normalize_batch_weights and weight_factors.numel() > 0:
+                        weight_factors = weight_factors / (weight_factors.mean() + 1e-12)
+                    aux_loss = (aux_loss_vec * weight_factors.squeeze(1)).mean()
+                else:
+                    aux_loss = aux_loss_vec.mean()
+
+            # joint loss
+            loss = pri_loss_vec.mean() if skip_mal else (pri_loss_vec.mean() + aux_loss)
 
             loss.backward()
             optimizer.step()
@@ -271,25 +285,33 @@ def train_network_dense(
                 gen_labels, aux_w    = label_network(imgs_aux, y_aux)
 
                 # flatten
-                pri_flat, y_flat = _flatten_valid(pri_probs, y_aux, ignore_index)
-                aux_flat, gen_flat = _flatten_valid(aux_probs, gen_labels, ignore_index)
+                pri_flat, y_flat     = _flatten_valid(pri_probs, y_aux,       ignore_index)
+                aux_flat, gen_flat   = _flatten_valid(aux_probs, gen_labels,  ignore_index)
                 if pri_flat.numel() == 0:
                     continue
 
                 pri_loss_vec = model_fit(pri_flat, y_flat, device, pri=True,  num_output=num_primary_classes)
-                aux_loss_vec = model_fit(aux_flat, gen_flat, device, pri=False, num_output=num_auxiliary_classes)
 
+                # aligned aux rows (+ weights)
                 if use_learned_weights:
-                    w = aux_w
-                    if w.shape[-2:] != aux_probs.shape[-2:]:
-                        w = F.interpolate(w, size=aux_probs.shape[-2:], mode="bilinear", align_corners=False)
-                    w_flat = w.permute(0, 2, 3, 1).reshape(-1, 1)
-                    weight_factors = torch.pow(2.0, 2 * val_range * w_flat - val_range)
-                    if normalize_batch_weights and weight_factors.numel() > 0:
-                        weight_factors = weight_factors / (weight_factors.mean() + 1e-12)
-                    aux_loss = (aux_loss_vec * weight_factors.squeeze(1)).mean()
+                    aux_kept, gen_kept, w_kept, keep = _align_aux_rows(aux_flat, gen_flat, aux_w, aux_probs)
                 else:
-                    aux_loss = aux_loss_vec.mean()
+                    row_sum = gen_flat.sum(dim=1)
+                    keep = row_sum > 0
+                    aux_kept = aux_flat[keep]
+                    gen_kept = gen_flat[keep]
+
+                if gen_kept.numel() == 0:
+                    aux_loss = torch.zeros((), device=device)
+                else:
+                    aux_loss_vec = model_fit(aux_kept, gen_kept, device, pri=False, num_output=num_auxiliary_classes)
+                    if use_learned_weights:
+                        weight_factors = torch.pow(2.0, 2 * val_range * w_kept - val_range)
+                        if normalize_batch_weights and weight_factors.numel() > 0:
+                            weight_factors = weight_factors / (weight_factors.mean() + 1e-12)
+                        aux_loss = (aux_loss_vec * weight_factors.squeeze(1)).mean()
+                    else:
+                        aux_loss = aux_loss_vec.mean()
 
                 joint_loss = pri_loss_vec.mean() + aux_loss
 
@@ -305,7 +327,6 @@ def train_network_dense(
                 pri_loss_fast = model_fit(pri_fast_flat, y_fast_flat, device, pri=True, num_output=num_primary_classes)
 
                 # encourage informative auxiliary partitioning with entropy reg (over all pixels)
-                # flatten gen_labels to [N, CK] and reuse your model_entropy
                 gen_flat_all = gen_labels.permute(0, 2, 3, 1).reshape(-1, num_auxiliary_classes)  # (N, CK)
                 ent_loss = model_entropy(gen_flat_all)
 
