@@ -1,4 +1,12 @@
 # wamal/train_network_dense.py
+import os
+os.environ.setdefault("CUDA_DEVICE_ORDER", "PCI_BUS_ID")
+# The script already parses --gpu N; pin it here so CUDA context is created once & correctly:
+# (Replace '0' with the parsed GPU index string)
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
+
+# Optional but helpful when debugging:
+os.environ.setdefault("CUDA_LAUNCH_BLOCKING", "1")
 from __future__ import annotations
 from typing import Optional, Tuple
 import os
