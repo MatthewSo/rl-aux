@@ -22,7 +22,7 @@ torch.backends.cuda.enable_mem_efficient_sdp(False)
 torch.backends.cuda.enable_math_sdp(True)
 
 # ------------------- CONFIG -------------------
-BATCH_SIZE             = 8
+BATCH_SIZE             = 4
 INCLUDE_THINGS         = True           # False => stuff-only semantics
 K_SUBLABELS_PER_CLASS  = 5
 
