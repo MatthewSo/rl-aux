@@ -66,10 +66,12 @@ device = torch.device(f"cuda:{GPU}" if torch.cuda.is_available() else "cpu")
 train_set = Places365(
     root="./data/places365",
     train=True,
+    download=True
 )
 test_set = Places365(
     root="./data/places365",
     train=False,
+    download=True
 )
 
 
