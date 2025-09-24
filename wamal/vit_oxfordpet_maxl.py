@@ -71,7 +71,7 @@ test_set = OxfordIIITPet(
     train=False,
 )
 if not FULL_DATASET:
-    train_set = PerClassCap(train_set)
+    train_set = PerClassCap(train_set, max_per_class=60)
 
 dataloader_train = torch.utils.data.DataLoader(
     dataset=train_set,

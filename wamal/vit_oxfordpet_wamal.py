@@ -34,7 +34,7 @@ GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
 TRAIN_RATIO = 1
 OPTIMIZER = "SGD"
-FULL_DATASET = True
+FULL_DATASET = False
 RANGE = 5
 USE_AUXILIARY_SET = False
 AUXILIARY_SET_RATIO = 0.0
@@ -74,7 +74,8 @@ test_set = OxfordIIITPet(
 )
 
 if not FULL_DATASET:
-    train_set = PerClassCap(train_set)
+    # 30% split
+    train_set = PerClassCap(train_set, max_per_class=60)
 
 dataloader_train = torch.utils.data.DataLoader(
     dataset=train_set,
