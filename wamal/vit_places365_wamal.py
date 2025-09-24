@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import torch.optim as optim
 import torch.utils.data.sampler as sampler
+
+from dataset_loaders.places_365 import Places365
 from utils.log import change_log_location
 from utils.path_name import create_path_name, save_parameter_dict
 from wamal.argparse import RUN_ID, GPU
@@ -27,7 +29,7 @@ LEARN_WEIGHTS = True
 TOTAL_EPOCH = 75
 PRIMARY_LR = 5e-4
 STEP_SIZE = 50
-IMAGE_SHAPE = (3, 224, 224)
+IMAGE_SHAPE = (3, 256, 256)
 GAMMA = 0.5
 GEN_OPTIMIZER_LR = 1e-3
 GEN_OPTIMIZER_WEIGHT_DECAY = 5e-4
