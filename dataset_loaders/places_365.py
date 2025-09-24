@@ -15,9 +15,8 @@ class Places365(Dataset):
         # check if root already has dataset
         if download:
             print("Downloading Places365 dataset...")
-            if not root.endswith("places365"):
-                root = f"{root}/places365"
-            if not os.path.exists(root):
+            if os.path.exists(root):
+                print("Root path does exist. Not downloading.")
                 download = False
 
         self.places = Places365Original(
