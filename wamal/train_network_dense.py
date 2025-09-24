@@ -59,11 +59,26 @@ def model_fit(pred: torch.Tensor,
 
 
 def inner_sgd_update(model: torch.nn.Module, loss: torch.Tensor, lr: float):
-    # identical logic to your dense-agnostic implementation
-    fast = {n: p for n, p in model.named_parameters()}
-    grads = torch.autograd.grad(loss, model.parameters(), create_graph=True)
-    return {n: w - lr * g for (n, w), g in zip(fast.items(), grads)}
+    """
+    One-step inner update (θ⁺) that tolerates params unused by the current joint_loss.
+    E.g., if aux_loss=0 this step, the auxiliary head may produce None grads.
+    """
+    # only trainable params, but keep their names for functional_call
+    params = {name: p for name, p in model.named_parameters() if p.requires_grad}
 
+    grads = torch.autograd.grad(
+        loss,
+        list(params.values()),
+        create_graph=True,
+        allow_unused=True,   # <-- key fix
+    )
+
+    fast = {}
+    for (name, w), g in zip(params.items(), grads):
+        if g is None:                        # param unused by this loss; leave it unchanged (or zero step)
+            g = torch.zeros_like(w)
+        fast[name] = w - lr * g
+    return fast
 
 def _flatten_valid(pr: torch.Tensor,
                    tgt: torch.Tensor,
