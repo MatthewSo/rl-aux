@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 from torchvision.datasets import Places365 as Places365Original
+import os
 
 class Places365(Dataset):
     """
