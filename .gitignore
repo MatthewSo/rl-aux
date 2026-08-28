@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv*/
+venv/
+env/
+
+# Experiment outputs
+results/
+trained_models/
+*.pt
+*.pth
+*.ckpt
+
+# Caches (models and datasets are re-downloadable; see llm/bootstrap)
+.cache/
+data/
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,20 @@
+# WAMAL-LM dependencies.
+#
+# torch is deliberately NOT pinned here. vast.ai images ship a CUDA-matched
+# build; installing our own would either duplicate a ~2GB wheel or downgrade
+# to a CPU build. bootstrap/setup_env.sh installs torch only if it is missing.
+
+# >=4.53 is required for Granite 4.0 (GraniteMoeHybrid); OLMo-2 needs >=4.48.
+transformers>=4.53.0
+tokenizers>=0.20.0
+huggingface_hub>=0.26.0
+safetensors>=0.4.0
+
+datasets>=3.0.0
+
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0          # 20 Newsgroups fetcher + NMI/purity in analysis
+matplotlib>=3.7.0            # analysis figures only
+
+tqdm>=4.66.0
