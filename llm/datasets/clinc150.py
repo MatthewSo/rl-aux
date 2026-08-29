@@ -21,6 +21,25 @@ NUM_PRIMARY = 10
 PSI = 15
 NUM_FINE = NUM_PRIMARY * PSI
 
+# Intent-level task: all 150 intents become the primary classification and the
+# auxiliary hierarchy is invented rather than recovered, which is MAXL's original
+# setting. Phase 1 ran the domain-level task, where an oracle hierarchy exists and
+# turned out to be worth only ~1pp -- a ceiling too low for any label-generating
+# method to clear by much. Intents are a far harder primary task (150 ways instead
+# of 10) and so leave real headroom.
+#
+# The cost is that no ground-truth sub-intent structure exists, so `fine` here is a
+# placeholder and sub-label recovery cannot be scored against truth. Two guards
+# follow from that: the `human` arm is rejected on this task (its targets would be
+# a constant slot), and `aux_vs_fine_acc` is reported as None rather than as a
+# number that looks meaningful and is not. `llm/analysis/recovery.py --inter-seed`
+# is the substitute: independent seeds agreeing on a partition is evidence of real
+# latent structure without needing a label for it.
+INTENT_PSI = 5
+INTENT_NUM_PRIMARY = NUM_FINE          # 150 intents
+INTENT_NUM_FINE = INTENT_NUM_PRIMARY * INTENT_PSI   # 750 invented sub-classes
+LEVELS = ("domain", "intent")
+
 # Must stay namespaced. The bare canonical name `clinc_oos` now 307-redirects
 # here, and current huggingface_hub follows the redirect but then builds an
 # `hf://datasets/clinc_oos@<sha>/...` URI from the original name and rejects its
@@ -90,15 +109,33 @@ def verify_against_dataset(label_names: list[str]) -> None:
 
 
 class CLINC150Hierarchical(Dataset):
-    """Yields `(text, coarse, fine)` with `fine // PSI == coarse`."""
+    """Yields `(text, coarse, fine)` with `fine // psi == coarse`.
 
-    NUM_PRIMARY = NUM_PRIMARY
-    NUM_FINE = NUM_FINE
-    PSI = PSI
+    At `primary_level="domain"` this is the two-level hierarchy: 10 domains as the
+    primary task, 150 human intents as the auxiliary one.
+
+    At `primary_level="intent"` the 150 intents become the primary task and the
+    auxiliary space is 5 invented sub-classes per intent. There is no ground truth
+    below an intent, so `fine` is a placeholder that only preserves the
+    `fine // psi == coarse` invariant the mask relies on; `has_fine_hierarchy` is
+    False and callers must not score anything against it.
+    """
 
     def __init__(self, split: str = "train", include_oos: bool = False,
-                 cache_dir: str | None = None):
+                 cache_dir: str | None = None, primary_level: str = "domain"):
         from datasets import load_dataset
+
+        if primary_level not in LEVELS:
+            raise ValueError(f"primary_level must be one of {LEVELS}, "
+                             f"got {primary_level!r}")
+        self.primary_level = primary_level
+        self.has_fine_hierarchy = primary_level == "domain"
+        if primary_level == "domain":
+            self.NUM_PRIMARY, self.PSI, self.NUM_FINE = NUM_PRIMARY, PSI, NUM_FINE
+        else:
+            self.NUM_PRIMARY = INTENT_NUM_PRIMARY
+            self.PSI = INTENT_PSI
+            self.NUM_FINE = INTENT_NUM_FINE
 
         hf_split = {"train": "train", "val": "validation",
                     "validation": "validation", "test": "test"}[split]
@@ -127,11 +164,20 @@ class CLINC150Hierarchical(Dataset):
                     self.oos_texts.append(text)
                 continue
             self.texts.append(text)
-            self.coarse.append(intent_to_coarse[name])
-            self.fine.append(intent_to_fine[name])
+            if primary_level == "domain":
+                self.coarse.append(intent_to_coarse[name])
+                self.fine.append(intent_to_fine[name])
+            else:
+                # The intent becomes the primary label. `fine` is slot 0 of that
+                # intent's own window: it carries no information, and exists only
+                # so the invariant below holds and the few-shot sampler still
+                # stratifies one class per intent.
+                intent = intent_to_fine[name]
+                self.coarse.append(intent)
+                self.fine.append(intent * self.PSI)
 
         for c, f in zip(self.coarse, self.fine):
-            assert f // PSI == c, "fine//psi == coarse invariant violated"
+            assert f // self.PSI == c, "fine//psi == coarse invariant violated"
 
     def __len__(self) -> int:
         return len(self.texts)
@@ -144,8 +190,15 @@ class CLINC150Hierarchical(Dataset):
         return self.fine
 
     def label_names(self) -> tuple[list[str], list[str]]:
+        """-> (auxiliary label names, primary label names)."""
         domain_names, intent_to_fine, _ = load_hierarchy()
-        names = [""] * NUM_FINE
+        intent_names = [""] * NUM_FINE
         for intent, fine in intent_to_fine.items():
-            names[fine] = intent
-        return names, domain_names
+            intent_names[fine] = intent
+
+        if self.primary_level == "domain":
+            return intent_names, domain_names
+        # Invented sub-classes have no names; the primary labels are the intents.
+        sub_names = [f"{intent_names[i // self.PSI]}#{i % self.PSI}"
+                     for i in range(self.NUM_FINE)]
+        return sub_names, intent_names

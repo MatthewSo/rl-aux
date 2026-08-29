@@ -14,7 +14,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 ARMS = ("single", "human", "maxl", "wamal")
-DATASETS = ("clinc150", "newsgroups")
+DATASETS = ("clinc150", "clinc150_intent", "newsgroups")
+
+# Datasets whose auxiliary label space has a ground truth. On the others the
+# auxiliary hierarchy is invented, so nothing may be scored against `fine`.
+DATASETS_WITHOUT_FINE_HIERARCHY = ("clinc150_intent",)
 
 # Fewer examples means fewer optimizer steps per epoch, so low-k cells need more
 # epochs to see a comparable number of updates. Provisional; phase 0 retunes it.
@@ -27,8 +31,22 @@ DATASETS = ("clinc150", "newsgroups")
 # so the extra epochs outweigh the smaller training set.
 EPOCHS_BY_SHOTS: dict[int, int] = {1: 80, 2: 60, 5: 40, 10: 30, 25: 20, 50: 15, 100: 10}
 
+# Budgets above are calibrated on the 10-way domain task, which is already ~45%
+# train-accurate after one epoch. A 150-way primary task starts far from fit and
+# needs more passes over the same number of examples to get anywhere, so an
+# undertrained run would compress every arm toward the same number and hide the
+# effect we are looking for. Scaled rather than re-tabulated so the shots ladder
+# stays in one place.
+DATASET_EPOCH_SCALE: dict[str, float] = {"clinc150_intent": 1.5}
+
 DATASET_DEFAULTS: dict[str, dict[str, Any]] = {
     "clinc150": {"num_primary": 10, "psi": 15, "max_len": 64},
+    # All 150 intents as the primary task, with 5 invented sub-classes each. The
+    # domain-level task's oracle hierarchy is worth only ~1pp, which is too low a
+    # ceiling for any label-generating method to clear by much; 150-way leaves real
+    # headroom. No ground truth exists below an intent, so `human` is rejected here
+    # and recovery is assessed by inter-seed agreement instead.
+    "clinc150_intent": {"num_primary": 150, "psi": 5, "max_len": 64},
     # Newsgroups posts are full documents rather than utterances, so they need a
     # much longer window.
     "newsgroups": {"num_primary": 4, "psi": 4, "max_len": 256},
@@ -170,6 +188,14 @@ class ExperimentConfig:
                     f"{self.shots - held} to train on. Needs k >= 2."
                 )
 
+        if self.uses_human_labels and not self.has_fine_hierarchy:
+            raise ValueError(
+                f"arm 'human' needs ground-truth fine labels, and dataset "
+                f"{self.dataset!r} has none -- its `fine` field is a placeholder "
+                "pointing at slot 0 of each primary class. Training on it would "
+                "produce a constant auxiliary target that looks like a working arm."
+            )
+
         if not 0.0 <= self.label_corruption <= 1.0:
             raise ValueError(
                 f"label_corruption must be in [0.0, 1.0], got {self.label_corruption}"
@@ -194,7 +220,8 @@ class ExperimentConfig:
             # Unlisted k values fall back to the nearest listed one rather than
             # silently defaulting, so an odd sweep value can't get 0 epochs.
             nearest = min(EPOCHS_BY_SHOTS, key=lambda s: abs(s - self.shots))
-            self.total_epoch = EPOCHS_BY_SHOTS[nearest]
+            scale = DATASET_EPOCH_SCALE.get(self.dataset, 1.0)
+            self.total_epoch = max(1, round(EPOCHS_BY_SHOTS[nearest] * scale))
 
         if self.inner_lr is None:
             self.inner_lr = self.primary_lr
@@ -226,6 +253,27 @@ class ExperimentConfig:
     @property
     def uses_human_labels(self) -> bool:
         return self.arm == "human"
+
+    @property
+    def has_fine_hierarchy(self) -> bool:
+        """Whether `fine` is a real label rather than a placeholder.
+
+        False on the invented-hierarchy tasks. Gates both the `human` arm and any
+        metric scored against `fine`, so an invented sub-label space cannot be
+        silently compared to a ground truth that does not exist.
+        """
+        return self.dataset not in DATASETS_WITHOUT_FINE_HIERARCHY
+
+    @property
+    def num_stratify_classes(self) -> int:
+        """How many distinct `fine` values the few-shot sampler should expect.
+
+        On the invented-hierarchy tasks every example sits in slot 0 of its own
+        primary class, so there are `num_primary` distinct values, not
+        `num_auxiliary`. Stratifying on them still yields k per primary class,
+        which is what few-shot means here.
+        """
+        return self.num_auxiliary if self.has_fine_hierarchy else self.num_primary
 
     @property
     def uses_generated_labels(self) -> bool:

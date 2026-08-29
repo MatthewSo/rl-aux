@@ -144,6 +144,77 @@ def analyse_dump(path: Path, psi: int, shuffles: int = DEFAULT_SHUFFLES,
     }
 
 
+def inter_seed_agreement(paths: list[Path], psi: int,
+                         shuffles: int = DEFAULT_SHUFFLES,
+                         seed: int = 0) -> dict:
+    """Do independent seeds invent the same partition? -> agreement vs a null.
+
+    The only recovery evidence available when the auxiliary hierarchy has no ground
+    truth, as on the intent-level task. Two runs that split the same test examples
+    the same way found structure in the data; two that disagree fit noise. Compared
+    over the test split because the k-shot training subset differs by seed.
+
+    Reported as mutual information between the two assignments within each primary
+    class, against a null that shuffles one of them -- so, as with the ground-truth
+    version, the number is chance-corrected and comparable across shot counts.
+    """
+    loaded = []
+    for path in paths:
+        data = np.load(path)
+        loaded.append((data["sublabels"], data["primary"]))
+
+    rng = np.random.default_rng(seed)
+    mis, nulls, pairs = [], [], 0
+
+    for i in range(len(loaded)):
+        for j in range(i + 1, len(loaded)):
+            (sub_a, prim_a), (sub_b, prim_b) = loaded[i], loaded[j]
+            if len(sub_a) != len(sub_b) or not np.array_equal(prim_a, prim_b):
+                raise ValueError(
+                    "assignments describe different test sets; they can only be "
+                    "compared when both runs saw identical examples in order"
+                )
+            keep = (sub_a >= 0) & (sub_b >= 0)
+            pairs += 1
+            for block in np.unique(prim_a[keep]):
+                mask = keep & (prim_a == block)
+                if mask.sum() < 2:
+                    continue
+                a = sub_a[mask] - block * psi
+                b = sub_b[mask] - block * psi
+                mis.append(mutual_information(a, b))
+                nulls.append(float(np.mean([
+                    mutual_information(rng.permutation(a), b)
+                    for _ in range(shuffles)
+                ])))
+
+    mi_mean = float(np.mean(mis)) if mis else 0.0
+    null_mean = float(np.mean(nulls)) if nulls else 0.0
+    return {
+        "mi": mi_mean,
+        "mi_null": null_mean,
+        "mi_ratio": mi_mean / null_mean if null_mean > 1e-12 else float("inf"),
+        "pairs": pairs,
+        "runs": len(loaded),
+    }
+
+
+def find_assignments(results_dir: Path, arm: str | None = None,
+                     shots: int | None = None,
+                     dataset: str | None = None) -> list[Path]:
+    out = []
+    for path in sorted(results_dir.glob("*/*/*/k*/seed*/test_assignment.npz")):
+        cell = path.parent
+        if dataset and cell.parts[-5] != dataset:
+            continue
+        if arm and cell.parent.parent.name.split("__")[0] != arm:
+            continue
+        if shots is not None and cell.parent.name != f"k{shots}":
+            continue
+        out.append(path)
+    return out
+
+
 def find_dumps(results_dir: Path, arm: str | None = None,
                shots: int | None = None) -> list[Path]:
     """Latest dump per cell: the assignment at the end of training."""
@@ -168,9 +239,40 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--shots", type=int, default=None)
     p.add_argument("--psi", type=int, default=15)
     p.add_argument("--shuffles", type=int, default=DEFAULT_SHUFFLES)
+    p.add_argument("--dataset", default=None)
+    p.add_argument("--inter-seed", action="store_true",
+                   help="compare phi's test-split partition across seeds instead of "
+                        "against ground truth. The only recovery evidence available "
+                        "where the auxiliary hierarchy is invented.")
     args = p.parse_args(argv)
 
     root = Path(args.results_dir or env.results_dir())
+
+    if args.inter_seed:
+        groups: dict[tuple, list[Path]] = {}
+        for path in find_assignments(root, args.arm, args.shots, args.dataset):
+            cell = path.parent
+            groups.setdefault(cell.parts[-5:-1], []).append(path)
+        groups = {k: v for k, v in groups.items() if len(v) >= 2}
+        if not groups:
+            print(f"no cell under {root} has 2+ runs with test_assignment.npz")
+            return 1
+
+        print(f"psi={args.psi}. Agreement between independent seeds on the same "
+              f"test examples.\n")
+        header = f"{'cell':<44} {'seeds':>6} {'MI':>8} {'null':>8} {'MI/null':>9}"
+        print(header)
+        print("-" * len(header))
+        for key, paths in sorted(groups.items()):
+            res = inter_seed_agreement(paths, args.psi, args.shuffles)
+            ratio = ("inf" if res["mi_ratio"] == float("inf")
+                     else f"{res['mi_ratio']:.2f}x")
+            print(f"{'/'.join(key):<44} {res['runs']:>6} {res['mi']:>8.4f} "
+                  f"{res['mi_null']:>8.4f} {ratio:>9}")
+        print("\nMI/null near 1x means seeds invent unrelated partitions, i.e. phi is")
+        print("fitting noise. Clearly above 1x means independent runs found the same")
+        print("structure in the data, which is real even with no label for it.")
+        return 0
     dumps = find_dumps(root, args.arm, args.shots)
     if not dumps:
         print(f"no dumps under {root}"

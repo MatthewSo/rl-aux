@@ -8,9 +8,12 @@ weights through bilevel optimization. This ports that to language, in the regime
 where auxiliary supervision should matter most: few-shot, with a frozen backbone
 and LoRA adapters.
 
-Three documents, three jobs:
+Four documents, four jobs:
 
 - `SPEC.md` — the design: experiment matrix, claims, open decisions.
+- [`FINDINGS.md`](FINDINGS.md) — **what the runs actually showed.** Start here if
+  you want results rather than mechanics: phase 1 is complete at 10 seeds, and two
+  of the three hypotheses for WAMAL's deficit are now refuted by measurement.
 - [`../RUNBOOK.md`](../RUNBOOK.md) — the operational lifecycle on a rented GPU,
   from provisioning to teardown, with a troubleshooting section.
 - this file — the code tour and the commands.
@@ -43,38 +46,54 @@ python -m llm.scripts.sweep --phase phase2 --gpus 0,1,2,3 --pack 4 --keep-going
 ```
 
 Phases are `smoke`, `phase0` (LR calibration), `phase1` (signal check, 200 cells),
-`phase1_holdout` (saturation control, 40 cells), `phase1_lowk` (extends phase 1's k
-grid down to 1 and 2 shots, 80 cells), `phase2` (main result, 400) and `phase3`
-(robustness).
+`phase1_holdout` (saturation control, 40), `phase1_intent` (150-way primary with an
+invented hierarchy, 45), `phase1_ladder` (label-quality ladder, 40), `phase1_lowk`
+(extends phase 1's k grid down to 1 and 2 shots, 80), `phase2` (main result, 400)
+and `phase3` (robustness).
 
-`phase1_holdout` follows from what phase 1 measured. The meta objective is the
-primary loss on the batch theta was just fitted on, so it decays to ~1e-5 halfway
-through a k=5 run and phi stops learning. How much of each run keeps live signal
-rises with k — 50% at k=5, 87% at k=100 — and that is the same ordering as wamal's
-results, which go from −1.12pp against single at k=5 to +0.07pp at k=100. So this
-phase measures the outer loss on withheld data (`--meta-holdout-frac 0.2`), which
-cannot be memorised. **Read `aux_recovery` before accuracy**: it asks directly
-whether phi finds real sub-structure once its objective stops saturating, and it is
-not confounded by the smaller training set. The withheld examples leave theta's
-training set for *every* arm, so the baselines stay matched.
+**See [`FINDINGS.md`](FINDINGS.md) for results.** `phase1` is complete at 10 seeds
+and `phase1_holdout` is 26/40; the short version is that WAMAL never beat single,
+and the two mechanisms we suspected are both ruled out.
 
-`phase1_ladder` asks how good learned labels would have to be. Real hierarchical
-labels are worth +0.8pp at k=5, phi's are worth nothing, and phi recovers only
-15–20% of the hierarchy — so this corrupts the human labels toward chance-within-
-block (`--label-corruption`) and reads the gain against label quality. Cheap: the
-human arm has no meta step. A steep curve near zero means quality is the binding
-constraint; a flat one means even good labels don't transfer.
+`phase1_holdout` was the saturation control, and it settled the question. The meta
+objective is the primary loss on the batch theta was just fitted on, so it decays
+toward zero early — signal survives only 15% of a k=5 run, rising to 65% at k=100,
+the same ordering as wamal's deficit (−1.04pp at k=5 to −0.01pp at k=100). Moving
+the outer loss onto withheld data (`--meta-holdout-frac 0.2`) fixed that
+completely, to 100% of epochs at both k=5 and k=10. **The deficit did not move**
+(−0.92pp at k=5), and recovery got slightly worse rather than better. Saturation
+was real and was not the cause. The withheld examples leave theta's training set
+for *every* arm, so the baselines stay matched.
+
+`phase1_intent` is the response to the finding that actually holds up: an oracle
+hierarchy on the 10-way domain task is worth only +0.3 to +1.0pp, which is too low
+a ceiling for any label-generating method to clear by much. It makes all 150
+intents the primary task with 5 invented sub-classes each — far harder, and the
+auxiliary hierarchy is invented rather than recovered, which is MAXL's original
+setting. No `human` arm: nothing exists below an intent, so the config rejects it
+rather than letting it train on a constant target. That also removes the ground
+truth, so read `recovery --inter-seed` instead of a recovery score.
+
+`phase1_ladder` asks how good learned labels would have to be, by corrupting the
+human labels toward chance-within-block (`--label-corruption`) and reading the gain
+against label quality. Cheap, since the human arm has no meta step. A steep curve
+near zero means quality is the binding constraint; a flat one means even good
+labels don't transfer — and §4 of `FINDINGS.md` already points at flat, since phi
+recovers most structure at k=100 where the oracle is worth least.
 
 **Do not read `aux_recovery` from `summary.json` for the maxl/wamal arms.** It is
 `argmax == fine`, but phi's clusters are only identified up to a permutation
 within each coarse block, so it scores 1/psi on a *perfect* recovery — 0.0600,
 which is exactly what phase 1 reported. Use `python -m llm.analysis.recovery`,
 which does Hungarian matching and mutual information against a within-block
-shuffled null. The naive number is still valid for the human arm, whose targets
-are the true fine labels.
+shuffled null. Corrected, phi turns out to recover real structure: 1.14x the null
+at k=5 rising to 6.72x at k=100. The naive number is still valid for the human arm,
+whose targets are the true fine labels, and is reported as `null` on the
+invented-hierarchy tasks where `fine` is a placeholder.
 
-`phase1_lowk` asks a different question — phase 1 runs on a task already at 90.6%
-at k=5, leaving ~7pp of range — but run it *after* `phase1_holdout`. Phase 1's
+`phase1_lowk` asks a different question — phase 1 runs on a task already at 90.5%
+at k=5, leaving ~7pp of range — but `phase1_intent` is now the better way in, since
+it adds headroom without starving the meta signal further. Phase 1's
 deficit shrinks monotonically as k grows, which is backwards from a headroom story,
 and at k=1 the meta signal is starved harder still, so on its own the probe cannot
 separate the two explanations. Its cells also cost *more* than k=5, not less:
@@ -210,6 +229,13 @@ python -m llm.analysis.curves                 # training curves, arms overlaid p
 python -m llm.analysis.aggregate --figure     # tables + accuracy-vs-k figure
 python -m llm.analysis.weights --examples 10  # weight distributions, extreme texts
 python -m llm.analysis.sublabels              # NMI/purity vs human fine labels
+
+# Chance-corrected sub-label recovery. Use this, not summary.json's aux_recovery.
+python -m llm.analysis.recovery --arm wamal --psi 15
+
+# Where the auxiliary hierarchy is invented and has no ground truth, ask instead
+# whether independent seeds arrive at the same partition of the same test examples.
+python -m llm.analysis.recovery --inter-seed --dataset clinc150_intent --psi 5
 ```
 
 Run `curves --check` first. `aggregate` answers "which arm won" from one row per
@@ -237,6 +263,15 @@ statistically correct one.
 fine labels, so "did the label network rediscover the human hierarchy?" is a
 measurement rather than a qualitative claim about blurry images.
 
+`recovery` is the one to trust for that question, because a generated clustering
+is identified only up to a permutation within each coarse block. It reports
+Hungarian-matched accuracy and mutual information against a shuffled-within-block
+null, so a perfect recovery under a permuted labeling scores high instead of
+scoring at chance — which is what `aux_recovery` does and why phase 1 was briefly
+read as "phi learned nothing." With `--inter-seed` it compares two runs' partitions
+of the test split to each other instead of to a ground truth, which is the only
+recovery evidence available on the invented-hierarchy tasks.
+
 ---
 
 ## Tests
@@ -247,6 +282,10 @@ python -m llm.tests.test_train_loop        # all four arms end to end
 python -m llm.tests.test_sweep             # enumeration, resumption, cost, GPU packing
 python -m llm.tests.test_curves            # diagnostics, incl. WAMAL-vs-MAXL collapse
 python -m llm.tests.test_tracking          # wandb can never break a run
+python -m llm.tests.test_losses            # numerical equality with the vision code
+python -m llm.tests.test_recovery          # calibrates the chance-corrected metrics
+python -m llm.tests.test_meta_holdout      # holdout split and label-corruption mechanics
+python -m llm.tests.test_intent_task       # invented-hierarchy guards
 ```
 
 CPU-only, no network, a few seconds. Run them before renting anything.

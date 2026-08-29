@@ -79,6 +79,28 @@ PHASES: dict[str, Phase] = {
         note="meta objective on withheld data; isolates the saturation confound",
         meta_holdout_frac=0.2,
     ),
+    # The intent-level task. Phase 1's ceiling is the reason: an oracle hierarchy on
+    # the 10-way domain task is worth only ~+1pp (human - single, paired), so no
+    # label-generating method can clear it by much and a negative result there is
+    # partly a statement about the task. All 150 intents as the primary task is far
+    # harder and leaves real headroom, and the auxiliary hierarchy becomes invented
+    # rather than recovered, which is MAXL's original setting.
+    #
+    # No `human` arm, because no ground truth exists below an intent -- the config
+    # rejects it rather than letting it train on a constant target. The cost is that
+    # sub-label recovery cannot be scored, so read inter-seed agreement instead:
+    #   python -m llm.analysis.recovery --inter-seed --dataset clinc150_intent --psi 5
+    "phase1_intent": Phase(
+        datasets=("clinc150_intent",),
+        models=("opt-125m",),
+        arms=("single", "maxl", "wamal"),
+        # k=100 is dropped, not forgotten: at 15000 examples it would cost more than
+        # the rest of the phase combined, and the domain task already showed the
+        # auxiliary effect shrinking monotonically with data. Headroom lives at low k.
+        shots=(5, 10, 25),
+        seeds=tuple(range(5)),
+        note="150-way primary, 5 invented sub-classes; headroom the domain task lacks",
+    ),
     # How good would learned labels have to be? Phase 1 says real hierarchical
     # labels are worth +0.8pp at k=5 while phi's are worth nothing, and a
     # permutation-invariant reading of the dumps puts phi at roughly 15-20% of the

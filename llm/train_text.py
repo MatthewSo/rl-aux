@@ -124,19 +124,53 @@ def evaluate(cfg, model, loader, device) -> dict:
         n = batch["coarse"].size(0)
         loss_sum += loss.sum().item()
         correct += primary.argmax(dim=1).eq(batch["coarse"]).sum().item()
-        # Agreement between the auxiliary head and the *human* fine labels,
-        # tracked for every arm. For maxl/wamal this is the sub-label recovery
-        # signal: it says whether the generated hierarchy rediscovered the real
-        # one without ever being shown it.
-        aux_correct += auxiliary.argmax(dim=1).eq(batch["fine"]).sum().item()
+        # Agreement between the auxiliary head and the human fine labels. Only
+        # meaningful where those labels exist and are anchored: see
+        # llm/analysis/recovery.py, which shows this reads 1/psi even on a perfect
+        # recovery because generated clusters are identified only up to a
+        # permutation. On the invented-hierarchy tasks `fine` is a placeholder, so
+        # scoring against it would be worse than useless.
+        if cfg.has_fine_hierarchy:
+            aux_correct += auxiliary.argmax(dim=1).eq(batch["fine"]).sum().item()
         total += n
 
     return {
         "loss": loss_sum / max(total, 1),
         "acc": correct / max(total, 1),
-        "aux_vs_fine_acc": aux_correct / max(total, 1),
+        "aux_vs_fine_acc": (aux_correct / max(total, 1)
+                            if cfg.has_fine_hierarchy else None),
         "n": total,
     }
+
+
+@torch.no_grad()
+def test_assignment(cfg, model, loader, device) -> tuple[np.ndarray, np.ndarray]:
+    """phi's sub-label assignment over the test split -> (sublabels, primary).
+
+    Where there is no ground truth below the primary class, agreement between
+    *independent seeds* is the available evidence that phi found real structure
+    rather than fitting noise: two runs that partition the same examples the same
+    way found something in the data, and two that disagree did not.
+
+    The test split is the only place that comparison is possible, since the k-shot
+    training subset differs by seed. Read it with
+    `llm/analysis/recovery.py --inter-seed`.
+    """
+    model.eval()
+    size = len(loader.dataset)
+    sub_out = np.full(size, -1, dtype=np.int64)
+    primary_out = np.full(size, -1, dtype=np.int64)
+
+    for batch in loader:
+        batch = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
+        sub_labels, _ = model.forward_label(
+            batch["input_ids"], batch["attention_mask"], batch["coarse"]
+        )
+        index = batch["index"].cpu().numpy()
+        sub_out[index] = sub_labels.argmax(dim=1).cpu().numpy()
+        primary_out[index] = batch["coarse"].cpu().numpy()
+
+    return sub_out, primary_out
 
 
 def train_wamal_text(cfg, device, model, loaders, theta_optimizer, theta_scheduler,
@@ -240,6 +274,13 @@ def train_wamal_text(cfg, device, model, loaders, theta_optimizer, theta_schedul
             if cfg.save_checkpoint:
                 model.save(f"{save_path}/best_model.pt", epoch=epoch,
                            val_acc=val["acc"], test_acc=test["acc"])
+
+    # After the loop, so it describes the phi that finished training. Only the arms
+    # that generate labels have anything to record.
+    if cfg.uses_generated_labels:
+        sub, primary = test_assignment(cfg, model, loaders["test"], device)
+        np.savez_compressed(f"{save_path}/test_assignment.npz",
+                            sublabels=sub, primary=primary)
 
     summary = {
         "cell": cfg.cell_id(),

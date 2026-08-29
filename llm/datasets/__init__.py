@@ -34,10 +34,12 @@ __all__ = [
 
 def build_dataset(name: str, split: str, seed: int = 0):
     cache = str(env.data_dir())
-    if name == "clinc150":
+    if name in ("clinc150", "clinc150_intent"):
         from llm.datasets.clinc150 import CLINC150Hierarchical
 
-        return CLINC150Hierarchical(split=split, cache_dir=cache)
+        level = "intent" if name == "clinc150_intent" else "domain"
+        return CLINC150Hierarchical(split=split, cache_dir=cache,
+                                    primary_level=level)
     if name == "newsgroups":
         from llm.datasets.newsgroups import NewsgroupsHierarchical
 
@@ -59,7 +61,7 @@ def build_loaders(cfg, tokenizer) -> dict[str, DataLoader]:
         k=cfg.shots,
         seed=cfg.seed,
         dataset_name=cfg.dataset,
-        num_fine=cfg.num_auxiliary,
+        num_fine=cfg.num_stratify_classes,
     )
 
     # Train only: val and test keep their true fine labels so that evaluation and

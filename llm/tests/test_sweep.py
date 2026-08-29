@@ -39,11 +39,28 @@ def make_cells(tmp: str, n: int) -> list:
 
 def test_phase_sizes_match_the_spec():
     expected = {"phase1": 200, "phase1_holdout": 40, "phase1_ladder": 40,
-                "phase1_lowk": 80, "phase2": 400, "smoke": 4}
+                "phase1_intent": 45, "phase1_lowk": 80, "phase2": 400, "smoke": 4}
     for name, want in expected.items():
         cells = sweep.enumerate_cells(sweep.PHASES[name], {})
         assert len(cells) == want, f"{name}: {len(cells)} cells, spec says {want}"
     print("  " + ", ".join(f"{k}={v}" for k, v in expected.items()))
+
+
+def test_every_phase_enumerates_only_arms_its_dataset_supports():
+    """A phase listing `human` on an invented-hierarchy dataset must not enumerate.
+
+    The config rejects that combination, but a sweep would only discover it one
+    subprocess at a time, after the queue is already running. Enumeration is where
+    it should surface.
+    """
+    for name, phase in sweep.PHASES.items():
+        for cfg in sweep.enumerate_cells(phase, {}):
+            cell = cfg.cell_id()
+            assert not ("clinc150_intent" in cell and "/human/" in cell), \
+                f"{name} enumerated a human cell on an invented hierarchy: {cell}"
+    intent = sweep.PHASES["phase1_intent"]
+    assert "human" not in intent.arms, intent.arms
+    print(f"  phase1_intent arms: {intent.arms} (human barred, no ground truth)")
 
 
 def test_ladder_reuses_phase1_as_its_zero_rung():
