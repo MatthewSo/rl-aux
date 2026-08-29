@@ -794,7 +794,15 @@ break (risk 10.1), and it runs in seconds on OPT-125M.
 sequentially, or across GPUs with `--gpus 0,1,2,3`. Because completion is a filesystem marker
 under `RESULTS_DIR`, an interrupted instance resumes by re-running the identical command.
 
-Multi-GPU mode is one worker thread per GPU pulling from a shared queue rather than a static
+`--pack N` runs N cells concurrently on each GPU, so `--gpus 0,1,2,3 --pack 2` gives eight
+concurrent slots. This is worth doing because these cells barely load the device: at OPT-125M with
+64-token sequences, `nvidia-smi` shows ~1.8GB of 46GB and single-digit utilisation, meaning the GPU
+is idle most of the time while the host issues small kernels. Packing interleaves cells into those
+gaps. The limits are host-side, not VRAM: each cell is a process with its own dataloader workers,
+so `gpus x pack x (1 + num_workers)` must stay inside the container's core and pid budget. `sweep.py`
+prints that count and warns when it exceeds the visible cores; `--num-workers` tunes it down.
+
+Multi-GPU mode is one worker thread per slot pulling from a shared queue rather than a static
 partition of the cell list: cells differ in cost by an order of magnitude (a k=100 `wamal` cell
 against a k=5 `single` one), so a static split would leave most GPUs idle waiting on the unlucky
 worker. Per-cell stdout goes to `sweep.log` inside each run directory, since interleaving several

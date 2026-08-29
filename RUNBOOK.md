@@ -99,8 +99,11 @@ Selection notes:
 - **Prefer one long-lived instance over several short ones.** Environment setup
   and model download are per-instance overhead, not per-run. A sweep is
   embarrassingly parallel but the setup is not.
-- **Multi-GPU is worth it for phase 2+.** `sweep.py --gpus 0,1,2,3` runs one cell
-  per GPU from a shared queue. Four cheap GPUs on one box beat one expensive one.
+- **Multi-GPU is worth it for phase 2+.** `sweep.py --gpus 0,1,2,3` pulls cells
+  from a shared queue. Four cheap GPUs on one box beat one expensive one.
+- **Pack cells onto each GPU.** These runs are host-bound, not GPU-bound: a phase-1
+  cell uses ~1.8GB of an L40S's 46GB at single-digit utilisation. `--pack 2` or
+  `--pack 4` fills the idle time. Prefer more cores over a bigger GPU.
 - **Check the disk allocation**, not just the GPU. Phase 2 pulls ~5GB of weights;
   ask for ≥40GB.
 - **Verify bf16.** Turing (2080Ti) has no bf16 and silently falls back to fp32,
@@ -227,11 +230,33 @@ deploy/remote.sh 'cd /workspace/rl-aux && \
   nohup python -m llm.scripts.sweep --phase phase1 --keep-going \
   > /workspace/sweep.log 2>&1 & echo started'
 
-# multiple GPUs: one cell per GPU, pulled from a shared queue
+# multiple GPUs, two cells packed on each: 8 concurrent, from a shared queue
 deploy/remote.sh 'cd /workspace/rl-aux && \
-  nohup python -m llm.scripts.sweep --phase phase2 --gpus 0,1,2,3 --keep-going \
+  nohup python -m llm.scripts.sweep --phase phase2 --gpus 0,1,2,3 --pack 2 --keep-going \
   > /workspace/sweep.log 2>&1 & echo started'
 ```
+
+### How much to pack
+
+Dry-run first — it prints the concurrent slot count, the resulting process count,
+and warns if that exceeds the visible cores:
+
+```bash
+deploy/remote.sh 'cd /workspace/rl-aux && \
+  python -m llm.scripts.sweep --phase phase1 --gpus 0,1,2,3 --pack 2 --dry-run'
+```
+
+Then confirm on the box while a sweep is running:
+
+```bash
+deploy/remote.sh 'nvidia-smi; nproc; uptime'
+```
+
+Raise `--pack` while GPU utilisation stays well under 100% and load average stays
+under the core count. Back off, or drop `--num-workers` to 1 or 0, if load average
+exceeds cores (host-saturated, so packing buys nothing) or VRAM approaches the
+card's limit. Phase 2 uses ~1B models at 256 tokens, so re-check VRAM there rather
+than assuming the phase-1 headroom carries over.
 
 Add `--wandb` to either command for a live dashboard. Runs are grouped by phase
 and split by arm, so a 400-cell sweep arrives as one comparable experiment rather

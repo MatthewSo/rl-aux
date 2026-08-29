@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import os
 import queue
 import subprocess
 import sys
@@ -147,7 +148,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gpu", type=int, default=0)
     p.add_argument("--gpus", default=None,
                    help="comma-separated GPU ids to run across, e.g. 0,1,2,3. "
-                        "One cell per GPU at a time. Overrides --gpu.")
+                        "Overrides --gpu.")
+    p.add_argument("--pack", type=int, default=1,
+                   help="concurrent cells per GPU (default 1). These cells leave "
+                        "the GPU mostly idle, so 2-4 is usually near-linear. "
+                        "Watch VRAM and CPU: each cell is a full process.")
+    p.add_argument("--num-workers", type=int, default=None,
+                   help="dataloader workers per cell. Lower it when packing, "
+                        "since total processes are gpus x pack x (1 + workers).")
     p.add_argument("--wandb", action="store_true",
                    help="mirror every cell to Weights & Biases, grouped by phase")
     p.add_argument("--wandb-project", default="wamal-lm")
@@ -185,6 +193,7 @@ def cell_command(cfg, gpu: int, force: bool) -> list[str]:
         "--primary-lr", str(cfg.primary_lr), "--gen-lr", str(cfg.gen_lr),
         "--batch-size", str(cfg.batch_size), "--dtype", cfg.dtype,
         "--gpu", str(gpu),
+        "--num-workers", str(cfg.num_workers),
     ]
     if cfg.results_dir:
         cmd += ["--results-dir", cfg.results_dir]
@@ -218,15 +227,22 @@ def run_sequential(pending, gpu, force, keep_going, log_dir=None):
     return failures
 
 
-def run_parallel(pending, gpus, force, keep_going):
-    """One worker thread per GPU, each pulling from a shared queue.
+def run_parallel(pending, slots, force, keep_going):
+    """One worker thread per slot, each pulling from a shared queue.
+
+    A slot is a place to run one cell; `slots` is a list of GPU ids with repeats,
+    so [0,0,1,1] means two concurrent cells on each of GPUs 0 and 1. Packing pays
+    off because these cells barely load the GPU: at OPT-125M with 64-token
+    sequences the bottleneck is host-side kernel launch, not compute, so a single
+    cell leaves the device idle most of the time. Concurrent cells interleave
+    into those gaps.
 
     A queue rather than a static partition because cells vary a lot in cost --
     a k=100 wamal cell is an order of magnitude longer than k=5 single -- and a
-    static split would leave GPUs idle at the end waiting on the unlucky one.
+    static split would leave slots idle at the end waiting on the unlucky one.
 
     Per-cell output goes to a log file instead of the terminal; interleaving
-    four training runs on one stdout is unreadable.
+    several training runs on one stdout is unreadable.
     """
     work: queue.Queue = queue.Queue()
     for cfg in pending:
@@ -265,7 +281,7 @@ def run_parallel(pending, gpus, force, keep_going):
                     if not keep_going:
                         stop.set()
 
-    threads = [threading.Thread(target=worker, args=(g,), daemon=True) for g in gpus]
+    threads = [threading.Thread(target=worker, args=(g,), daemon=True) for g in slots]
     for thread in threads:
         thread.start()
     for thread in threads:
@@ -281,6 +297,12 @@ def main(argv: list[str] | None = None) -> int:
 
     gpus = ([int(g) for g in args.gpus.split(",") if g.strip() != ""]
             if args.gpus else [args.gpu])
+    if args.pack < 1:
+        print("--pack must be at least 1", file=sys.stderr)
+        return 2
+    # Interleaved rather than grouped ([0,1,0,1] not [0,0,1,1]) so that a sweep
+    # stopped early has spread its work evenly across devices.
+    slots = [g for _ in range(args.pack) for g in gpus]
 
     overrides = dict(
         optimizer=args.optimizer,
@@ -297,6 +319,8 @@ def main(argv: list[str] | None = None) -> int:
         wandb_group=args.wandb_group if args.wandb_group is not None else args.phase,
         wandb_mode=args.wandb_mode,
     )
+    if args.num_workers is not None:
+        overrides["num_workers"] = args.num_workers
 
     cells = enumerate_cells(phase, overrides)
     pending = [c for c in cells if args.force or not is_complete(c)]
@@ -305,14 +329,32 @@ def main(argv: list[str] | None = None) -> int:
 
     results_root = Path(args.results_dir) if args.results_dir else env.results_dir()
 
+    workers_per_cell = overrides.get("num_workers", 2)
     print(f"phase {args.phase}: {phase.note}")
     print(f"{len(cells)} cells total, {len(cells) - len(pending)} already done, "
-          f"{len(pending)} to run on GPU(s) {gpus}")
+          f"{len(pending)} to run on GPU(s) {gpus}"
+          + (f" x{args.pack} packed = {len(slots)} concurrent"
+             if args.pack > 1 else ""))
 
-    hours, known = estimate_hours(pending, results_root, len(gpus))
+    # Each cell is a process with its own dataloader workers. Oversubscribing
+    # the container's pid or core budget is the failure the thread caps exist to
+    # prevent, so say the number out loud before it bites.
+    procs = len(slots) * (1 + workers_per_cell)
+    cores = os.cpu_count() or 0
+    if args.pack > 1:
+        print(f"  {procs} processes ({len(slots)} cells x 1+{workers_per_cell} workers)"
+              + (f", {cores} cores visible" if cores else ""))
+        if cores and procs > cores:
+            print(f"  WARNING: more processes than cores; consider "
+                  f"--num-workers {max(0, cores // len(slots) - 1)} or a lower --pack")
+
+    hours, known = estimate_hours(pending, results_root, len(slots))
     if known or hours:
-        print(f"estimated {hours:.1f} GPU-hours across {len(gpus)} GPU(s) "
+        print(f"estimated {hours:.1f} h wall-clock across {len(slots)} slot(s) "
               f"({known}/{len(pending)} cells priced from measured runs)")
+        if args.pack > 1:
+            print("  assumes packing scales linearly; it will not exactly, since "
+                  "packed cells contend for the host")
     else:
         print("no prior runs to estimate from; run --phase smoke first for a price")
 
@@ -326,10 +368,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     started = time.time()
-    if len(gpus) > 1:
-        failures = run_parallel(pending, gpus, args.force, args.keep_going)
+    if len(slots) > 1:
+        failures = run_parallel(pending, slots, args.force, args.keep_going)
     else:
-        failures = run_sequential(pending, gpus[0], args.force, args.keep_going)
+        failures = run_sequential(pending, slots[0], args.force, args.keep_going)
 
     print(f"\nsweep finished in {(time.time() - started)/60:.1f}m")
     if failures:

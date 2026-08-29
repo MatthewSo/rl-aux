@@ -155,17 +155,15 @@ def test_parallel_runs_every_cell_exactly_once():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def test_parallel_never_double_books_a_gpu():
-    """One cell per GPU at a time. Overlapping cells would race for VRAM.
+def _record_spans(tmp: str, slots: list[int], n_cells: int):
+    """Run n_cells over `slots` with stub subprocesses that record wall intervals.
 
-    Checked from the outside, by having each stub subprocess record the wall
-    interval it occupied and then asserting no two intervals on the same GPU
-    overlap. Counters incremented around the call would only re-describe the
-    code's own structure; timestamps observe what actually happened.
+    -> {gpu: [(start, end), ...]}. Observing real intervals rather than counting
+    around the call: a counter would only restate the code's own structure,
+    whereas timestamps show what concurrency actually happened.
     """
-    tmp = tempfile.mkdtemp(prefix="wamal_sweep_")
     spans = Path(tmp) / "spans"
-    spans.mkdir(parents=True)
+    spans.mkdir(parents=True, exist_ok=True)
     original = sweep.cell_command
 
     def build(cfg, gpu, force):
@@ -180,31 +178,73 @@ def test_parallel_never_double_books_a_gpu():
 
     try:
         sweep.cell_command = build
-        sweep.run_parallel(make_cells(tmp, 16), [0, 1, 2, 3], force=False,
-                           keep_going=True)
-
-        by_gpu: dict[int, list[tuple[float, float]]] = {}
-        for path in spans.glob("*.json"):
-            rec = json.loads(path.read_text())
-            by_gpu.setdefault(rec["gpu"], []).append((rec["start"], rec["end"]))
-
-        assert len(list(spans.glob("*.json"))) == 16, "not every cell ran"
-        for gpu, intervals in by_gpu.items():
-            intervals.sort()
-            for (_, prev_end), (next_start, _) in zip(intervals, intervals[1:]):
-                assert next_start >= prev_end, (
-                    f"gpu{gpu} ran two cells concurrently: "
-                    f"one ended at {prev_end}, another started at {next_start}"
-                )
-
-        # Guard against the opposite failure: everything serialised onto one GPU
-        # would trivially satisfy the overlap check while wasting the other three.
-        assert len(by_gpu) == 4, f"expected work on 4 GPUs, saw {sorted(by_gpu)}"
-        print(f"  16 cells / 4 GPUs, no overlap on any GPU; per-GPU counts "
-              f"{[len(v) for _, v in sorted(by_gpu.items())]}")
+        sweep.run_parallel(make_cells(tmp, n_cells), slots, force=False, keep_going=True)
     finally:
         sweep.cell_command = original
+
+    by_gpu: dict[int, list[tuple[float, float]]] = {}
+    for path in spans.glob("*.json"):
+        rec = json.loads(path.read_text())
+        by_gpu.setdefault(rec["gpu"], []).append((rec["start"], rec["end"]))
+    assert len(list(spans.glob("*.json"))) == n_cells, "not every cell ran"
+    return by_gpu
+
+
+def peak_concurrency(intervals: list[tuple[float, float]]) -> int:
+    """Most cells alive at once on one GPU, by sweeping the interval endpoints."""
+    events = [(s, 1) for s, _ in intervals] + [(e, -1) for _, e in intervals]
+    events.sort()
+    peak = live = 0
+    for _, delta in events:
+        live += delta
+        peak = max(peak, live)
+    return peak
+
+
+def test_unpacked_runs_one_cell_per_gpu():
+    """Default packing must not overlap: cells would otherwise race for VRAM."""
+    tmp = tempfile.mkdtemp(prefix="wamal_sweep_")
+    try:
+        by_gpu = _record_spans(tmp, [0, 1, 2, 3], 16)
+        for gpu, intervals in by_gpu.items():
+            peak = peak_concurrency(intervals)
+            assert peak == 1, f"gpu{gpu} ran {peak} cells at once with pack=1"
+        # The opposite failure: serialising onto one GPU would satisfy the
+        # overlap check while wasting the other three.
+        assert len(by_gpu) == 4, f"expected work on 4 GPUs, saw {sorted(by_gpu)}"
+        print(f"  16 cells / 4 GPUs unpacked, peak concurrency 1 everywhere; "
+              f"counts {[len(v) for _, v in sorted(by_gpu.items())]}")
+    finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_packing_runs_several_cells_per_gpu_but_respects_the_cap():
+    """pack=2 must actually overlap, and must not exceed 2 per GPU."""
+    tmp = tempfile.mkdtemp(prefix="wamal_sweep_")
+    try:
+        slots = [g for _ in range(2) for g in (0, 1)]   # [0,1,0,1]
+        by_gpu = _record_spans(tmp, slots, 12)
+
+        peaks = {gpu: peak_concurrency(iv) for gpu, iv in by_gpu.items()}
+        for gpu, peak in peaks.items():
+            assert peak <= 2, f"gpu{gpu} exceeded the pack cap with {peak} cells"
+        assert max(peaks.values()) == 2, (
+            f"packing never actually overlapped; peaks {peaks}. "
+            f"pack=2 that runs serially is a silent no-op."
+        )
+        assert set(by_gpu) == {0, 1}, f"expected both GPUs used, saw {sorted(by_gpu)}"
+        print(f"  12 cells / 2 GPUs x pack 2: peak concurrency {peaks}, cap respected")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_slot_list_is_interleaved():
+    """[0,1,0,1] not [0,0,1,1], so an early stop spreads work across devices."""
+    gpus, pack = [0, 1, 2], 2
+    slots = [g for _ in range(pack) for g in gpus]
+    assert slots == [0, 1, 2, 0, 1, 2], slots
+    assert len(slots) == len(gpus) * pack
+    print(f"  gpus={gpus} pack={pack} -> slots={slots}")
 
 
 def test_parallel_reports_failures_and_honours_keep_going():

@@ -36,7 +36,10 @@ Then:
 python -m llm.scripts.sweep --phase phase1 --dry-run
 
 python -m llm.scripts.sweep --phase phase1 --gpu 0
-python -m llm.scripts.sweep --phase phase2 --gpus 0,1,2,3 --keep-going
+
+# these cells are host-bound, not GPU-bound (~1.8GB of 46GB on an L40S), so pack
+# several onto each card: 4 GPUs x 2 = 8 concurrent
+python -m llm.scripts.sweep --phase phase2 --gpus 0,1,2,3 --pack 2 --keep-going
 ```
 
 **Before destroying the instance:**
