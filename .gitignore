@@ -12,9 +12,14 @@ env/
 # Experiment outputs
 results/
 trained_models/
+vast_artifacts/
 *.pt
 *.pth
 *.ckpt
+
+# Deployment secrets: tokens and connection details. Never commit.
+deploy/env
+.git-credentials
 
 # Caches (models and datasets are re-downloadable; see llm/bootstrap)
 .cache/

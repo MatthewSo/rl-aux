@@ -86,6 +86,15 @@ class ExperimentConfig:
     save_checkpoint: bool = True
     tag: str = ""
 
+    # --- tracking ----------------------------------------------------------
+    # Off by default: metrics.jsonl is the source of truth and every analysis
+    # reads it, so wandb is a mirror you opt into rather than a dependency.
+    wandb: bool = False
+    wandb_project: str = "wamal-lm"
+    wandb_entity: str | None = None
+    wandb_group: str = ""               # sweep sets this to the phase name
+    wandb_mode: str = "auto"            # auto | online | offline | disabled
+
     _resolved: bool = field(default=False, repr=False)
 
     # ------------------------------------------------------------------ #
@@ -99,6 +108,11 @@ class ExperimentConfig:
             raise ValueError(f"pooling must be 'last' or 'mean', got {self.pooling!r}")
         if self.optimizer not in ("sgd", "adamw"):
             raise ValueError(f"optimizer must be 'sgd' or 'adamw', got {self.optimizer!r}")
+        if self.wandb_mode not in ("auto", "online", "offline", "disabled"):
+            raise ValueError(
+                f"wandb_mode must be auto/online/offline/disabled, "
+                f"got {self.wandb_mode!r}"
+            )
         if self.needs_meta_step and self.attn_implementation != "eager":
             raise ValueError(
                 f"arm {self.arm!r} differentiates through the inner update, which "

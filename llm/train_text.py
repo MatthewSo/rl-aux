@@ -140,8 +140,13 @@ def evaluate(cfg, model, loader, device) -> dict:
 
 
 def train_wamal_text(cfg, device, model, loaders, theta_optimizer, theta_scheduler,
-                     phi_optimizer, phi_scheduler, save_path, logger) -> dict:
+                     phi_optimizer, phi_scheduler, save_path, logger,
+                     tracker=None) -> dict:
     save_path = Path(save_path)
+    if tracker is None:
+        from llm.tracking import NullTracker
+
+        tracker = NullTracker()
     train_loader = loaders["train"]
     train_size = loaders["train_size"]
 
@@ -203,6 +208,9 @@ def train_wamal_text(cfg, device, model, loaders, theta_optimizer, theta_schedul
             "elapsed_s": round(time.time() - started, 1),
         }
         logger.metric(record)
+        # Mirrored, not forwarded: metrics.jsonl is written first and is what
+        # the analysis reads, so this line failing costs visibility, not data.
+        tracker.log(record, step=epoch)
         logger.print(
             f"epoch {epoch:03d} | train {train_stats['loss_primary']:.4f}/"
             f"{train_stats['acc_primary']:.4f} | val {val['acc']:.4f} "
@@ -252,6 +260,7 @@ def train_wamal_text(cfg, device, model, loaders, theta_optimizer, theta_schedul
     }
     logger.print(f"done: best val {best_val_acc:.4f} @ epoch {best_epoch}, "
                  f"test {best_test_acc:.4f}, {summary['wall_time_s']}s")
+    tracker.summarise(summary)
     mark_complete(save_path, summary)
     return summary
 

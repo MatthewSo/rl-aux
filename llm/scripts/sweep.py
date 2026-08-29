@@ -13,13 +13,16 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import queue
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 
 from llm.config import ARMS, ExperimentConfig
-from llm.paths import is_complete
+from llm.paths import is_complete, run_dir
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,47 @@ def enumerate_cells(phase: Phase, overrides: dict) -> list[ExperimentConfig]:
     return cells
 
 
+def measured_runtimes(results_root: Path) -> dict[str, float]:
+    """Wall times from runs already on disk, keyed by (arm, shots).
+
+    Used to price a phase from measured data rather than a guess. After phase 1
+    this makes the phase 2 bill an extrapolation.
+    """
+    times: dict[str, list[float]] = {}
+    for summary_path in results_root.rglob("summary.json"):
+        try:
+            record = json.loads(summary_path.read_text())
+        except (OSError, ValueError):
+            continue
+        wall = record.get("wall_time_s")
+        if not wall:
+            continue
+        times.setdefault(f"{record.get('arm')}:{record.get('shots')}", []).append(wall)
+    return {k: sum(v) / len(v) for k, v in times.items()}
+
+
+def estimate_hours(cells: list, results_root: Path, workers: int) -> tuple[float, int]:
+    """-> (estimated GPU-hours, number of cells we had a measurement for).
+
+    Cells with no matching measurement are priced at the mean of whatever we do
+    have; with no data at all the estimate is meaningless and the caller says so.
+    """
+    measured = measured_runtimes(results_root)
+    if not measured:
+        return 0.0, 0
+
+    fallback = sum(measured.values()) / len(measured)
+    total, known = 0.0, 0
+    for cfg in cells:
+        key = f"{cfg.arm}:{cfg.shots}"
+        if key in measured:
+            total += measured[key]
+            known += 1
+        else:
+            total += fallback
+    return total / 3600.0 / max(workers, 1), known
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -101,6 +145,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true",
                    help="list the pending cells and stop; use this before spending")
     p.add_argument("--gpu", type=int, default=0)
+    p.add_argument("--gpus", default=None,
+                   help="comma-separated GPU ids to run across, e.g. 0,1,2,3. "
+                        "One cell per GPU at a time. Overrides --gpu.")
+    p.add_argument("--wandb", action="store_true",
+                   help="mirror every cell to Weights & Biases, grouped by phase")
+    p.add_argument("--wandb-project", default="wamal-lm")
+    p.add_argument("--wandb-entity", default=None)
+    p.add_argument("--wandb-group", default=None,
+                   help="defaults to the phase name, which is what you usually want")
+    p.add_argument("--wandb-mode", default="auto",
+                   choices=("auto", "online", "offline", "disabled"))
     p.add_argument("--results-dir", default=None)
     p.add_argument("--optimizer", default="sgd", choices=("sgd", "adamw"))
     p.add_argument("--primary-lr", type=float, default=1e-2)
@@ -115,9 +170,117 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def cell_command(cfg, gpu: int, force: bool) -> list[str]:
+    """Each cell runs in a fresh process.
+
+    A CUDA OOM or a wedged allocator in one cell would otherwise poison every
+    cell after it, and losing a 200-cell sweep to cell 12 is the expensive
+    failure mode. Process isolation makes a bad cell cost one cell.
+    """
+    cmd = [
+        sys.executable, "-m", "llm.scripts.run_experiment",
+        "--dataset", cfg.dataset, "--model", cfg.model, "--arm", cfg.arm,
+        "--shots", str(cfg.shots), "--seed", str(cfg.seed),
+        "--optimizer", cfg.optimizer,
+        "--primary-lr", str(cfg.primary_lr), "--gen-lr", str(cfg.gen_lr),
+        "--batch-size", str(cfg.batch_size), "--dtype", cfg.dtype,
+        "--gpu", str(gpu),
+    ]
+    if cfg.results_dir:
+        cmd += ["--results-dir", cfg.results_dir]
+    if force:
+        cmd += ["--force"]
+    if getattr(cfg, "wandb", False):
+        cmd += ["--wandb",
+                "--wandb-project", cfg.wandb_project,
+                "--wandb-mode", cfg.wandb_mode]
+        if cfg.wandb_group:
+            cmd += ["--wandb-group", cfg.wandb_group]
+        if cfg.wandb_entity:
+            cmd += ["--wandb-entity", cfg.wandb_entity]
+    return cmd
+
+
+def run_sequential(pending, gpu, force, keep_going, log_dir=None):
+    failures, started = [], time.time()
+    for i, cfg in enumerate(pending, 1):
+        elapsed = time.time() - started
+        eta = (elapsed / max(i - 1, 1)) * (len(pending) - i + 1) if i > 1 else 0
+        print(f"\n[{i}/{len(pending)}] {cfg.cell_id()}  "
+              f"(elapsed {elapsed/60:.1f}m, eta {eta/60:.1f}m)", flush=True)
+
+        result = subprocess.run(cell_command(cfg, gpu, force))
+        if result.returncode != 0:
+            failures.append((cfg.cell_id(), f"exit {result.returncode}"))
+            print(f"  FAILED: exit {result.returncode}", file=sys.stderr)
+            if not keep_going:
+                break
+    return failures
+
+
+def run_parallel(pending, gpus, force, keep_going):
+    """One worker thread per GPU, each pulling from a shared queue.
+
+    A queue rather than a static partition because cells vary a lot in cost --
+    a k=100 wamal cell is an order of magnitude longer than k=5 single -- and a
+    static split would leave GPUs idle at the end waiting on the unlucky one.
+
+    Per-cell output goes to a log file instead of the terminal; interleaving
+    four training runs on one stdout is unreadable.
+    """
+    work: queue.Queue = queue.Queue()
+    for cfg in pending:
+        work.put(cfg)
+
+    failures: list[tuple[str, str]] = []
+    lock = threading.Lock()
+    stop = threading.Event()
+    done = [0]
+    started = time.time()
+
+    def worker(gpu: int) -> None:
+        while not stop.is_set():
+            try:
+                cfg = work.get_nowait()
+            except queue.Empty:
+                return
+
+            log_path = run_dir(cfg) / "sweep.log"
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(log_path, "w") as log:
+                result = subprocess.run(cell_command(cfg, gpu, force),
+                                        stdout=log, stderr=subprocess.STDOUT)
+
+            with lock:
+                done[0] += 1
+                elapsed = time.time() - started
+                rate = elapsed / max(done[0], 1)
+                remaining = rate * (len(pending) - done[0])
+                status = "ok" if result.returncode == 0 else f"FAIL {result.returncode}"
+                print(f"[{done[0]}/{len(pending)}] gpu{gpu} {status} "
+                      f"{cfg.cell_id()}  (elapsed {elapsed/60:.1f}m, "
+                      f"eta {remaining/60:.1f}m)", flush=True)
+                if result.returncode != 0:
+                    failures.append((cfg.cell_id(), f"exit {result.returncode}, see {log_path}"))
+                    if not keep_going:
+                        stop.set()
+
+    threads = [threading.Thread(target=worker, args=(g,), daemon=True) for g in gpus]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    return failures
+
+
 def main(argv: list[str] | None = None) -> int:
+    from llm import env
+
     args = build_parser().parse_args(argv)
     phase = PHASES[args.phase]
+
+    gpus = ([int(g) for g in args.gpus.split(",") if g.strip() != ""]
+            if args.gpus else [args.gpu])
 
     overrides = dict(
         optimizer=args.optimizer,
@@ -125,8 +288,14 @@ def main(argv: list[str] | None = None) -> int:
         gen_lr=args.gen_lr,
         batch_size=args.batch_size,
         dtype=args.dtype,
-        device=f"cuda:{args.gpu}",
+        device=f"cuda:{gpus[0]}",
         results_dir=args.results_dir,
+        wandb=args.wandb,
+        wandb_project=args.wandb_project,
+        wandb_entity=args.wandb_entity,
+        # Grouping by phase is what turns 400 runs into one comparable sweep.
+        wandb_group=args.wandb_group if args.wandb_group is not None else args.phase,
+        wandb_mode=args.wandb_mode,
     )
 
     cells = enumerate_cells(phase, overrides)
@@ -134,47 +303,33 @@ def main(argv: list[str] | None = None) -> int:
     if args.limit:
         pending = pending[: args.limit]
 
+    results_root = Path(args.results_dir) if args.results_dir else env.results_dir()
+
     print(f"phase {args.phase}: {phase.note}")
     print(f"{len(cells)} cells total, {len(cells) - len(pending)} already done, "
-          f"{len(pending)} to run")
+          f"{len(pending)} to run on GPU(s) {gpus}")
+
+    hours, known = estimate_hours(pending, results_root, len(gpus))
+    if known or hours:
+        print(f"estimated {hours:.1f} GPU-hours across {len(gpus)} GPU(s) "
+              f"({known}/{len(pending)} cells priced from measured runs)")
+    else:
+        print("no prior runs to estimate from; run --phase smoke first for a price")
 
     if args.dry_run:
         for cfg in pending:
             print("  " + cfg.cell_id())
         return 0
 
-    failures: list[tuple[str, str]] = []
+    if not pending:
+        print("nothing to do")
+        return 0
+
     started = time.time()
-
-    for i, cfg in enumerate(pending, 1):
-        elapsed = time.time() - started
-        eta = (elapsed / max(i - 1, 1)) * (len(pending) - i + 1) if i > 1 else 0
-        print(f"\n[{i}/{len(pending)}] {cfg.cell_id()}  "
-              f"(elapsed {elapsed/60:.1f}m, eta {eta/60:.1f}m)", flush=True)
-
-        # Each cell runs in a fresh process. A CUDA OOM or a wedged allocator in
-        # one cell would otherwise poison every cell after it, and losing a
-        # whole sweep to cell 12 of 200 is the expensive failure mode here.
-        cmd = [
-            sys.executable, "-m", "llm.scripts.run_experiment",
-            "--dataset", cfg.dataset, "--model", cfg.model, "--arm", cfg.arm,
-            "--shots", str(cfg.shots), "--seed", str(cfg.seed),
-            "--optimizer", cfg.optimizer,
-            "--primary-lr", str(cfg.primary_lr), "--gen-lr", str(cfg.gen_lr),
-            "--batch-size", str(cfg.batch_size), "--dtype", cfg.dtype,
-            "--gpu", str(args.gpu),
-        ]
-        if cfg.results_dir:
-            cmd += ["--results-dir", cfg.results_dir]
-        if args.force:
-            cmd += ["--force"]
-
-        result = subprocess.run(cmd)
-        if result.returncode != 0:
-            failures.append((cfg.cell_id(), f"exit {result.returncode}"))
-            print(f"  FAILED: exit {result.returncode}", file=sys.stderr)
-            if not args.keep_going:
-                break
+    if len(gpus) > 1:
+        failures = run_parallel(pending, gpus, args.force, args.keep_going)
+    else:
+        failures = run_sequential(pending, gpus[0], args.force, args.keep_going)
 
     print(f"\nsweep finished in {(time.time() - started)/60:.1f}m")
     if failures:

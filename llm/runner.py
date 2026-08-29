@@ -7,6 +7,7 @@ import torch
 from llm import env
 from llm.paths import RunLogger, is_complete, prepare_run_dir, run_dir
 from llm.seeding import seed_everything
+from llm.tracking import build_tracker
 
 
 def build_optimizers(cfg, model):
@@ -77,15 +78,20 @@ def run(cfg, force: bool = False) -> dict:
 
         theta_opt, theta_sched, phi_opt, phi_sched = build_optimizers(cfg, model)
 
-        return train_wamal_text(
-            cfg=cfg,
-            device=device,
-            model=model,
-            loaders=loaders,
-            theta_optimizer=theta_opt,
-            theta_scheduler=theta_sched,
-            phi_optimizer=phi_opt,
-            phi_scheduler=phi_sched,
-            save_path=save_path,
-            logger=logger,
-        )
+        # Opened here rather than inside the loop so a tracking failure happens
+        # before any GPU time is spent, and closed by the context manager even
+        # if training raises.
+        with build_tracker(cfg, save_path, logger) as tracker:
+            return train_wamal_text(
+                cfg=cfg,
+                device=device,
+                model=model,
+                loaders=loaders,
+                theta_optimizer=theta_opt,
+                theta_scheduler=theta_sched,
+                phi_optimizer=phi_opt,
+                phi_scheduler=phi_sched,
+                save_path=save_path,
+                logger=logger,
+                tracker=tracker,
+            )

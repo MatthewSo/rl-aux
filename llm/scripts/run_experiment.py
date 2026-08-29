@@ -66,6 +66,18 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--force", action="store_true",
                      help="rerun even if a DONE marker exists")
     run.add_argument("--tag", default="")
+
+    track = p.add_argument_group("tracking (wandb; metrics.jsonl is always written)")
+    track.add_argument("--wandb", action="store_true",
+                       help="mirror per-epoch metrics to Weights & Biases")
+    track.add_argument("--wandb-project", default="wamal-lm")
+    track.add_argument("--wandb-entity", default=None,
+                       help="team or username; defaults to your wandb default")
+    track.add_argument("--wandb-group", default="",
+                       help="groups runs in the UI; sweep.py sets this to the phase")
+    track.add_argument("--wandb-mode", default="auto",
+                       choices=("auto", "online", "offline", "disabled"),
+                       help="auto goes online when a key is present, else offline")
     return p
 
 
@@ -100,10 +112,22 @@ def config_from_args(args) -> ExperimentConfig:
         log_cosine=args.log_cosine,
         save_checkpoint=not args.no_checkpoint,
         tag=args.tag,
+        wandb=args.wandb,
+        wandb_project=args.wandb_project,
+        wandb_entity=args.wandb_entity,
+        wandb_group=args.wandb_group,
+        wandb_mode=args.wandb_mode,
     ).resolve()
 
 
 def main(argv: list[str] | None = None) -> int:
+    from llm import env
+
+    # Before importing anything that pulls in torch or numpy. The BLAS libraries
+    # read their thread counts once at load time, so setting the caps after the
+    # import silently does nothing.
+    env.configure()
+
     from llm.runner import run
 
     args = build_parser().parse_args(argv)

@@ -21,7 +21,7 @@ while [[ $# -gt 0 ]]; do
         --with-checkpoints) WITH_CHECKPOINTS=1; shift ;;
         --out)              OUT_DIR="$2"; shift 2 ;;
         -h|--help)
-            grep '^#' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            awk 'NR>1 && /^#/ {sub(/^# ?/, ""); print; next} NR>1 {exit}' "${BASH_SOURCE[0]}"
             exit 0 ;;
         *) echo "unknown flag: $1" >&2; exit 2 ;;
     esac

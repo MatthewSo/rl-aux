@@ -21,9 +21,10 @@ while [[ $# -gt 0 ]]; do
         --tier)           TIER="$2"; shift 2 ;;
         --gpu)            GPU="$2"; shift 2 ;;
         --skip-env)       SKIP_ENV=1; shift ;;
+        --skip-secrets)   export SKIP_SECRETS=1; shift ;;
         --skip-preflight) SKIP_PREFLIGHT=1; shift ;;
         -h|--help)
-            grep '^#' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            awk 'NR>1 && /^#/ {sub(/^# ?/, ""); print; next} NR>1 {exit}' "${BASH_SOURCE[0]}"
             exit 0 ;;
         *) echo "unknown flag: $1" >&2; exit 2 ;;
     esac
@@ -49,23 +50,33 @@ echo "   RESULTS: ${RESULTS_DIR:-<default>}"
 echo "=============================================================="
 
 if [[ "${SKIP_ENV}" -eq 0 ]]; then
-    echo; echo "--- 1/4 environment ---"
+    echo; echo "--- 1/5 environment ---"
     bash "${HERE}/setup_env.sh"
 else
-    echo; echo "--- 1/4 environment (skipped) ---"
+    echo; echo "--- 1/5 environment (skipped) ---"
 fi
 
-echo; echo "--- 2/4 models (tier: ${TIER}) ---"
+# After the environment, so `wandb login` can persist the key to ~/.netrc, and
+# before the downloads, so an HF token is in place if one is needed.
+echo; echo "--- 2/5 api keys ---"
+bash "${HERE}/setup_secrets.sh"
+SECRETS_FILE="${SECRETS_FILE:-/workspace/.wamal_env}"
+if [[ -f "${SECRETS_FILE}" ]]; then
+    # shellcheck disable=SC1090
+    set -a; source "${SECRETS_FILE}"; set +a
+fi
+
+echo; echo "--- 3/5 models (tier: ${TIER}) ---"
 ${PY} -m llm.bootstrap.download_models --tier "${TIER}"
 
-echo; echo "--- 3/4 data ---"
+echo; echo "--- 4/5 data ---"
 ${PY} -m llm.bootstrap.download_data
 
 if [[ "${SKIP_PREFLIGHT}" -eq 0 ]]; then
-    echo; echo "--- 4/4 preflight ---"
+    echo; echo "--- 5/5 preflight ---"
     ${PY} -m llm.bootstrap.preflight --tier "${TIER}" --gpu "${GPU}"
 else
-    echo; echo "--- 4/4 preflight (skipped) ---"
+    echo; echo "--- 5/5 preflight (skipped) ---"
 fi
 
 cat <<EOF
@@ -78,6 +89,9 @@ cat <<EOF
 
    # run it
    python -m llm.scripts.sweep --phase ${TIER} --gpu ${GPU}
+
+   # ...with a live wandb dashboard, grouped by phase
+   python -m llm.scripts.sweep --phase ${TIER} --gpu ${GPU} --wandb
 
  Run llm/bootstrap/sync_results.sh and copy the archive off the
  box BEFORE destroying the instance.

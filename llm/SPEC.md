@@ -253,11 +253,13 @@ llm/
 
   train_text.py               train_wamal_text(...)
   paths.py                    run-directory naming, self-contained
+  tracking.py                 optional wandb mirror; never load-bearing
   runner.py                   builds everything from ExperimentConfig and dispatches
 
   bootstrap/                  see section 11 (vast.ai deployment)
     bootstrap.sh              one-shot: env + models + data + preflight
     setup_env.sh              pip install into the image's python
+    setup_secrets.sh          prompt for and persist WANDB_API_KEY / HF_TOKEN
     download_models.py        prefetch HF weights into the persistent cache
     download_data.py          prefetch CLINC150 + 20NG into the persistent cache
     preflight.py              GPU / memory / end-to-end smoke test
@@ -272,12 +274,49 @@ llm/
 
   analysis/
     aggregate.py              seeds -> mean/std tables
+    curves.py                 per-epoch curves + training-health diagnostics
     weights.py                weight distributions, top/bottom-k examples
     sublabels.py              NMI / purity vs human fine labels
 
   tests/
     test_lora_functional.py   the risk-10.1 unit test
+    test_train_loop.py        end-to-end, all four arms, on a tiny synthetic backbone
+    test_sweep.py             cell enumeration, resumption, cost estimate, multi-GPU queue
+    test_tracking.py          wandb degrades to a no-op and never breaks a run
 ```
+
+### 5.2 Tracking
+
+`metrics.jsonl` is the source of truth. `aggregate`, `curves`, `weights` and `sublabels` all read
+the local files and none of them import wandb, so a sweep whose tracking failed is still a
+complete, analysable experiment. `tracking.py` only mirrors, and `--wandb` is off by default.
+
+That ordering is deliberate rather than incidental. Tracking runs on an instance billed by the
+hour where the only unrecoverable loss is the training itself, so no tracking failure may
+propagate into a run: every call is wrapped, and the first failure disables the tracker for the
+remainder of the run rather than retrying once per epoch against a dead socket.
+
+Three details matter for sweeps specifically. Runs are **grouped by phase and split by arm**, so
+400 cells arrive as one comparable experiment instead of 400 orphans. Run ids are **derived from
+the cell id**, so a re-run after a crash resumes its wandb run -- random ids plus a resumable
+sweep would produce a project full of half-runs. And with no credentials the tracker records
+**offline** rather than blocking on a handshake that will fail, because a five-minute
+`init_timeout` multiplied across a sweep is real money.
+
+Plus, at the repo root, the operator-side half of the deployment story:
+
+```
+RUNBOOK.md                    the lifecycle: provision -> bootstrap -> launch -> sync -> teardown
+deploy/                       runs on the laptop, never on the GPU box
+  env.example                 template for tokens and connection vars; deploy/env is gitignored
+  _common.sh                  shared ssh/rsync plumbing (bash 3.2 compatible, for macOS)
+  remote.sh                   run a command on the box, follow logs, clone/update the repo
+  sync.sh                     rsync pull/push, plus a remote progress summary
+```
+
+The split is deliberate: `deploy/` needs your SSH config and never needs a GPU; `llm/bootstrap/`
+needs a GPU and never needs your SSH config. That means a box reached some other way -- the
+vast.ai web terminal, a Jupyter cell -- can still be bootstrapped with no local scaffolding.
 
 Rationale for one `run_experiment.py` rather than the repo's one-script-per-cell convention:
 the current `wamal/` directory has 39 near-duplicate scripts and the per-arm config drift
@@ -751,24 +790,39 @@ break (risk 10.1), and it runs in seconds on OPT-125M.
 
 ### 11.4 Sweeps and interruption
 
-`sweep.py` enumerates cells from a phase name, skips any with a `DONE` marker, and runs the
-rest sequentially or across visible GPUs with `--parallel N`. Because completion is a filesystem
-marker under `RESULTS_DIR`, an interrupted instance resumes by re-running the identical command.
+`sweep.py` enumerates cells from a phase name, skips any with a `DONE` marker, and runs the rest
+sequentially, or across GPUs with `--gpus 0,1,2,3`. Because completion is a filesystem marker
+under `RESULTS_DIR`, an interrupted instance resumes by re-running the identical command.
 
-`--dry-run` prints the cell list and count without executing, so the bill can be estimated
-before committing.
+Multi-GPU mode is one worker thread per GPU pulling from a shared queue rather than a static
+partition of the cell list: cells differ in cost by an order of magnitude (a k=100 `wamal` cell
+against a k=5 `single` one), so a static split would leave most GPUs idle waiting on the unlucky
+worker. Per-cell stdout goes to `sweep.log` inside each run directory, since interleaving several
+training logs on one stream is unreadable.
+
+Every cell runs in its own subprocess. A CUDA OOM or a wedged allocator would otherwise poison
+every cell after it, and losing a 200-cell sweep to cell 12 is the expensive failure mode.
+
+`--dry-run` prints the cell list and count without executing. It also estimates GPU-hours from
+the wall times recorded in existing `summary.json` files, so each phase prices the next one from
+measurement rather than guesswork; with no prior runs it says so instead of inventing a number.
 
 ### 11.5 Getting results off the box
 
-`sync_results.sh` tars `RESULTS_DIR` into a single timestamped archive, excluding checkpoints by
-default (`--with-checkpoints` to include them) since `metrics.jsonl` plus the `.npz` dumps are
-all the analysis needs and are ~1000x smaller.
+Two paths, depending on whether the box is reachable over SSH:
 
-Retrieval is deliberately left to the operator (`vastai copy`, `scp`, `rclone`) rather than
-baking in cloud credentials. The script prints the exact command for each.
+- `deploy/sync.sh pull` (from the laptop) rsyncs `RESULTS_DIR` into `./vast_artifacts`.
+  Incremental and resumable, so a dropped connection costs the current file rather than the whole
+  transfer, and re-running after more cells finish moves only the new ones. This is the normal
+  path. `deploy/sync.sh status` reports remote progress without transferring anything.
+- `sync_results.sh` (on the box) tars `RESULTS_DIR` into a timestamped archive for when only a
+  web terminal or `vastai copy` is available.
 
-**Run `sync_results.sh` before destroying any instance.** Nothing outside the mounted volume
-survives teardown.
+Both exclude checkpoints by default (`--with-checkpoints` to include them) since `metrics.jsonl`
+plus the `.npz` dumps are all the analysis needs and are ~1000x smaller.
+
+**Pull before destroying any instance.** Nothing outside the mounted volume survives teardown.
+`RUNBOOK.md` is the operational procedure; this section is the rationale.
 
 ### 11.6 Cost discipline
 

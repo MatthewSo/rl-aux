@@ -48,11 +48,28 @@ def data_dir() -> Path:
     return hf_home() / "wamal_data"
 
 
-def configure() -> dict[str, str]:
-    """Export cache locations into the environment and create the directories.
+# Rented boxes are shared containers with a capped pid budget. Left alone,
+# OpenBLAS and OpenMP each spawn one thread per *host* core -- which on a
+# 128-core machine where we were sold 8 is dozens of threads per process, times
+# every dataloader worker. The container hits its pid ceiling and the symptom is
+# a BrokenPipeError when a worker forks, which looks like a data bug and is not.
+# Capping costs nothing here: the work is GPU-bound and our tensors are small.
+THREAD_VARS = (
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+)
+DEFAULT_THREADS = "4"
 
-    Must run before transformers/datasets are imported anywhere that matters,
-    since both read their cache paths at import time.
+
+def configure(threads: str | None = None) -> dict[str, str]:
+    """Export cache locations and thread caps, and create the directories.
+
+    Must run before torch/numpy/transformers are imported anywhere that matters:
+    the BLAS libraries read their thread counts once, at load time, and ignore
+    later changes.
     """
     home = hf_home()
     for sub in ("hub", "datasets"):
@@ -69,6 +86,10 @@ def configure() -> dict[str, str]:
         # lengths.
         "TOKENIZERS_PARALLELISM": "false",
     }
+    cap = threads or os.environ.get("WAMAL_NUM_THREADS", DEFAULT_THREADS)
+    for var in THREAD_VARS:
+        exported[var] = cap
+
     for key, value in exported.items():
         os.environ.setdefault(key, value)
     return exported
@@ -78,5 +99,6 @@ def describe() -> str:
     return (
         f"HF_HOME={hf_home()}\n"
         f"RESULTS_DIR={results_dir()}\n"
-        f"DATA_DIR={data_dir()}"
+        f"DATA_DIR={data_dir()}\n"
+        f"threads={os.environ.get('OMP_NUM_THREADS', '<unset>')}"
     )
