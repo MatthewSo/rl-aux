@@ -15,9 +15,12 @@ The diagnostics that matter here, in rough order of how likely they are to bite:
   `meta_loss_before` is the direct evidence that differentiating through the
   inner update improves the primary loss. If they sit on top of each other, the
   bilevel machinery is running and costing double-backward time for nothing.
-- **Weight collapse.** If `train_weight_mean` flattens to a constant, WAMAL has
-  degenerated into MAXL while still reporting plausible accuracy. Nothing in the
-  summary would reveal that.
+- **Weight collapse.** If `train_weight_std` goes to zero, every sample is
+  getting the same auxiliary weight and WAMAL has degenerated into MAXL with a
+  rescaled auxiliary loss, while still reporting plausible accuracy. Dispersion
+  between samples is the thing to watch, not the mean: a constant weight that
+  drifts across epochs moves the mean and is still MAXL. Nothing in the summary
+  would reveal either case.
 
     python -m llm.analysis.curves --list
     python -m llm.analysis.curves                    # every cell, arms overlaid
@@ -162,19 +165,30 @@ def diagnose(run: dict) -> list[str]:
                 f"{improved}/{len(pairs)} epochs (mean {gain:+.5f})"
             )
 
-    # Weight collapse turns WAMAL into MAXL invisibly. Judged relative to the
-    # mean, since weight magnitude varies with the scaling range, and only over
-    # a long enough run: the first few epochs are legitimately flat while the
-    # label network is still random, so a short run would flag every time.
-    weights = series(epochs, "train_weight_mean")
-    if run["arm"] == "wamal" and len(weights) >= 8:
-        spread = max(weights) - min(weights)
-        centre = sum(weights) / len(weights)
-        if centre and spread / abs(centre) < 0.01:
+    # Weight collapse turns WAMAL into MAXL invisibly. The question is whether
+    # weights differ *between samples*, which is dispersion within an epoch, not
+    # movement of the mean across epochs -- a per-sample-constant weight that
+    # drifts over training would pass the latter check while being pure MAXL.
+    # Judged relative to the mean because weight magnitude depends on the
+    # scaling range, and only over a long enough run: the first epochs are
+    # legitimately flat while the label network is still near its init.
+    if run["arm"] == "wamal":
+        stds = series(epochs, "train_weight_std")
+        means = series(epochs, "train_weight_mean")
+        if len(stds) >= 8 and means:
+            centre = sum(means) / len(means)
+            late = stds[len(stds) // 2:]           # after the warm-up half
+            dispersion = sum(late) / len(late)
+            if centre and dispersion / abs(centre) < 0.01:
+                notes.append(
+                    f"per-sample weights are constant: std {dispersion:.2e} at "
+                    f"mean {centre:.4f} ({dispersion / abs(centre):.2%}) -- this "
+                    f"is MAXL with a rescaled auxiliary loss, not WAMAL"
+                )
+        elif not stds and len(means) >= 8:
             notes.append(
-                f"weight mean is flat at {centre:.4f} (spread {spread:.2e}, "
-                f"{spread / abs(centre):.2%} of mean) -- weights may have "
-                f"collapsed, making this MAXL in disguise"
+                "train_weight_std missing: cannot tell WAMAL from MAXL "
+                "(run predates the dispersion logging)"
             )
     return notes
 
@@ -263,9 +277,19 @@ def plot_cell(key: str, runs: list[dict], out_dir: Path) -> Path:
             weights = [e.get("train_weight_mean") for e in epochs]
             if not any(w is not None for w in weights):
                 continue
-            axes[idx].plot([e["epoch"] for e in epochs], weights,
-                           color=ARM_COLORS.get(run["arm"], None), label=run["arm"])
-        axes[idx].set_title("mean auxiliary weight\n(flat = possible collapse)")
+            xs = [e["epoch"] for e in epochs]
+            color = ARM_COLORS.get(run["arm"], None)
+            axes[idx].plot(xs, weights, color=color, label=run["arm"])
+            # The +/-1 std band is the panel's actual point: a line with no band
+            # is a constant weight, i.e. MAXL. Drawn only where std exists so
+            # runs predating the dispersion logging still plot their mean.
+            stds = [e.get("train_weight_std") for e in epochs]
+            if any(s is not None for s in stds):
+                lo = [w - s for w, s in zip(weights, stds) if w is not None and s is not None]
+                hi = [w + s for w, s in zip(weights, stds) if w is not None and s is not None]
+                axes[idx].fill_between(xs[:len(lo)], lo, hi, color=color, alpha=0.2)
+        axes[idx].set_title("auxiliary weight, mean +/- std across samples\n"
+                            "(no band = collapsed to MAXL)")
         axes[idx].set_xlabel("epoch"); axes[idx].legend(fontsize=8)
 
     fig.suptitle(key)

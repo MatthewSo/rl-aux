@@ -197,6 +197,9 @@ def train_wamal_text(cfg, device, model, loaders, theta_optimizer, theta_schedul
             "train_acc_auxiliary": train_stats["acc_auxiliary"],
             "train_cosine": train_stats["cosine"],
             "train_weight_mean": train_stats["weight_mean"],
+            "train_weight_std": train_stats["weight_std"],
+            "train_weight_min": train_stats["weight_min"],
+            "train_weight_max": train_stats["weight_max"],
             "meta_loss_before": meta_stats.get("loss_before"),
             "meta_loss_after": meta_stats.get("loss_after"),
             "meta_entropy": meta_stats.get("entropy"),
@@ -282,7 +285,13 @@ def _train_epoch(cfg, model, loader, device, optimizer, inner_lr,
     loss_p_sum = loss_a_sum = 0.0
     correct_p = correct_a = total = 0
     cosine_sum, cosine_n = 0.0, 0
-    weight_sum, weight_n = 0.0, 0
+    # Sum of squares and extremes as well as the sum: the mean weight says nothing
+    # about whether the weights differ *between samples*, which is the entire
+    # difference between WAMAL and MAXL. A constant weight is MAXL with a rescaled
+    # auxiliary loss, and the mean alone cannot distinguish the two.
+    weight_sum = weight_sq_sum = 0.0
+    weight_n = 0
+    weight_min, weight_max = float("inf"), float("-inf")
 
     weights_out = np.full(train_size, np.nan, dtype=np.float32) if collect_dumps else None
     sublabels_out = np.full(train_size, -1, dtype=np.int64) if collect_dumps else None
@@ -326,7 +335,11 @@ def _train_epoch(cfg, model, loader, device, optimizer, inner_lr,
         total += n
 
         if raw_weights is not None and cfg.uses_learned_weights:
-            weight_sum += raw_weights.sum().item()
+            flat = raw_weights.detach().float().reshape(-1)
+            weight_sum += flat.sum().item()
+            weight_sq_sum += flat.square().sum().item()
+            weight_min = min(weight_min, flat.min().item())
+            weight_max = max(weight_max, flat.max().item())
             weight_n += n
 
         if collect_dumps and aux_target is not None:
@@ -342,13 +355,24 @@ def _train_epoch(cfg, model, loader, device, optimizer, inner_lr,
             coarse_out[index] = batch["coarse"].cpu().numpy()
 
     denom = max(total, 1)
+    weight_mean = weight_sum / weight_n if weight_n else None
+    weight_std = None
+    if weight_n:
+        # Clamped at zero because sum-of-squares minus square-of-sum is only
+        # non-negative up to float error, and a tiny negative here is exactly the
+        # case that matters -- genuinely constant weights.
+        variance = max(weight_sq_sum / weight_n - weight_mean ** 2, 0.0)
+        weight_std = variance ** 0.5
     return {
         "loss_primary": loss_p_sum / denom,
         "loss_auxiliary": loss_a_sum / denom,
         "acc_primary": correct_p / denom,
         "acc_auxiliary": correct_a / denom,
         "cosine": cosine_sum / cosine_n if cosine_n else None,
-        "weight_mean": weight_sum / weight_n if weight_n else None,
+        "weight_mean": weight_mean,
+        "weight_std": weight_std,
+        "weight_min": weight_min if weight_n else None,
+        "weight_max": weight_max if weight_n else None,
         "weights": weights_out,
         "sublabels": sublabels_out,
         "fine_labels": fine_out,

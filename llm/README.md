@@ -118,14 +118,20 @@ that failure mode unrepresentable rather than merely unlikely.
 Every run writes to `$RESULTS_DIR/<dataset>/<model>/<arm>/k<shots>/seed<seed>/`:
 
 ```
-config.json      the fully resolved config
-metrics.jsonl    one record per epoch
-summary.json     best-val epoch, test acc there, wall time, peak memory
-print.log
-dump_epoch*.npz  per-sample weights and generated sub-labels
-best_model.pt    LoRA + heads only, never the frozen backbone
-DONE             completion marker
+config.json          the fully resolved config
+metrics.jsonl        one record per epoch, replaced (not appended) on a re-run
+metrics.jsonl.prev   the previous attempt, if this cell was interrupted and rerun
+summary.json         best-val epoch, test acc there, wall time, peak memory
+print.log            appended across attempts
+dump_epoch*.npz      per-sample weights and generated sub-labels
+best_model.pt        LoRA + heads only, never the frozen backbone
+DONE                 completion marker
 ```
+
+An interrupted cell restarts from epoch 0, so `metrics.jsonl` is replaced rather
+than appended to: two runs concatenated in one file, with the epoch counter
+jumping backwards partway through, reads as a single implausible curve to every
+epoch-indexed analysis. The old file is kept as `metrics.jsonl.prev`.
 
 `DONE` is what makes sweeps resumable: `sweep.py` skips any cell that has one, so
 an interrupted spot instance resumes by re-running the identical command.
@@ -173,11 +179,15 @@ is the question you need settled before believing any headline number. It reads
 `metrics.jsonl`, works on runs still in progress, and flags overfitting (val
 peaking early — expected at k=5, where 40 epochs pass over ~750 examples), a
 diverging learning rate, an undertrained epoch budget, a meta step that isn't
-lowering the primary loss, and a mean auxiliary weight that has gone flat.
+lowering the primary loss, and auxiliary weights that no longer vary between
+samples.
 
-That last one is the quiet failure: if the weights collapse to a constant, WAMAL
-has silently become MAXL and will still report a plausible accuracy. Nothing in
-`summary.json` would show it.
+That last one is the quiet failure: if every sample gets the same weight, WAMAL
+has silently become MAXL with a rescaled auxiliary loss and will still report a
+plausible accuracy. Nothing in `summary.json` would show it. The check is on
+`train_weight_std`, the spread *across samples within an epoch* — not on the
+mean, since a per-sample-constant weight that drifts over training moves the mean
+while still being pure MAXL.
 
 `aggregate` pairs arms by `(dataset, model, shots, seed)` rather than comparing
 group means. The few-shot sampler is a pure function of those coordinates, so all
@@ -195,7 +205,9 @@ measurement rather than a qualitative claim about blurry images.
 ```bash
 python -m llm.tests.test_lora_functional   # adapters, functional_call, second-order path
 python -m llm.tests.test_train_loop        # all four arms end to end
-python -m llm.tests.test_sweep             # enumeration, resumption, cost, multi-GPU queue
+python -m llm.tests.test_sweep             # enumeration, resumption, cost, GPU packing
+python -m llm.tests.test_curves            # diagnostics, incl. WAMAL-vs-MAXL collapse
+python -m llm.tests.test_tracking          # wandb can never break a run
 ```
 
 CPU-only, no network, a few seconds. Run them before renting anything.

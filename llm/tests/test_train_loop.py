@@ -191,6 +191,89 @@ def test_only_wamal_records_weights():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_wamal_logs_per_sample_weight_dispersion():
+    """The only field that can tell WAMAL apart from MAXL.
+
+    A per-sample weight that is the same for every sample is MAXL with a rescaled
+    auxiliary loss. The mean cannot show that; the std across samples can, so it
+    has to be in every epoch record for the arms that learn weights.
+    """
+    tmp = tempfile.mkdtemp(prefix="wamal_loop_")
+    try:
+        for arm, learns_weights in [("single", False), ("human", False),
+                                    ("maxl", False), ("wamal", True)]:
+            _, _, path = run_arm(arm, tmp)
+            records = [json.loads(line)
+                       for line in (path / "metrics.jsonl").read_text().splitlines()]
+
+            for key in ("train_weight_mean", "train_weight_std",
+                        "train_weight_min", "train_weight_max"):
+                assert key in records[0], f"{arm}: {key} missing from the record"
+
+            got = records[-1]
+            if not learns_weights:
+                assert got["train_weight_std"] is None, (
+                    f"{arm}: does not train the weight head, so its output must "
+                    f"not be reported as if it meant something"
+                )
+                print(f"  {arm:7s} no weight stats, as expected")
+                continue
+
+            mean, std = got["train_weight_mean"], got["train_weight_std"]
+            lo, hi = got["train_weight_min"], got["train_weight_max"]
+            assert None not in (mean, std, lo, hi), f"{arm}: incomplete weight stats"
+            assert std >= 0.0, f"{arm}: negative std {std}"
+            assert std > 0.0, (
+                f"{arm}: std is exactly 0, so every sample got weight {mean} -- "
+                f"either the weight head collapsed or it is not per-sample at all"
+            )
+            assert lo <= mean <= hi, f"{arm}: mean {mean} outside [{lo}, {hi}]"
+            assert std <= (hi - lo), f"{arm}: std {std} exceeds the range {hi - lo}"
+            print(f"  {arm:7s} weight {mean:.4f} +/- {std:.4f}, range [{lo:.4f}, {hi:.4f}]")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_rerunning_a_cell_replaces_rather_than_appends_metrics():
+    """An interrupted cell restarts from epoch 0, so its metrics must too.
+
+    Appending left two runs concatenated in one file with the epoch counter
+    jumping backwards partway through, which every epoch-indexed analysis then
+    read as a single implausible curve.
+    """
+    tmp = tempfile.mkdtemp(prefix="wamal_loop_")
+    try:
+        cfg, _, path = run_arm("wamal", tmp)
+        first = (path / "metrics.jsonl").read_text()
+        assert first.strip(), "no metrics written on the first run"
+
+        _, _, path_again = run_arm("wamal", tmp)
+        assert path_again == path, "re-run wrote to a different directory"
+        records = [json.loads(line)
+                   for line in (path / "metrics.jsonl").read_text().splitlines()]
+
+        assert len(records) == cfg.total_epoch, (
+            f"{len(records)} records for {cfg.total_epoch} epochs -- the previous "
+            f"attempt was appended to instead of replaced"
+        )
+        epochs = [r["epoch"] for r in records]
+        assert epochs == sorted(set(epochs)), (
+            f"epoch sequence {epochs} is not strictly increasing, so this file "
+            f"holds more than one run"
+        )
+        assert epochs[0] == 0, f"first record is epoch {epochs[0]}, expected 0"
+
+        # Replaced, not destroyed: the previous attempt is the only evidence of
+        # why it died, which is worth keeping on a preemptible box.
+        prev = path / "metrics.jsonl.prev"
+        assert prev.exists(), "previous attempt was discarded rather than kept"
+        assert prev.read_text() == first, "metrics.jsonl.prev is not the old file"
+        print(f"  re-run left {len(records)} records (epochs {epochs[0]}..{epochs[-1]}), "
+              f"old file preserved as metrics.jsonl.prev")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_selection_uses_validation_not_test():
     tmp = tempfile.mkdtemp(prefix="wamal_loop_")
     try:

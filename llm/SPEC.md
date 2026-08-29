@@ -489,8 +489,17 @@ phi to learn.
 and torchvision at module scope, which would drag vision dependencies onto a fresh GPU box. The
 maths is copied verbatim, and a unit test asserts numerical equality with the original.
 
-**Metrics.** One JSON object per epoch appended to `metrics.jsonl`, carrying train/val/test loss
-and accuracy for both the primary and auxiliary heads. This replaces `epoch_performances.pkl`:
+**Metrics.** One JSON object per epoch written to `metrics.jsonl`, carrying train/val/test loss
+and accuracy for both the primary and auxiliary heads, plus the auxiliary weight distribution
+(`train_weight_mean`, `_std`, `_min`, `_max`) for the arms that learn weights. The std is the load
+-bearing one: it is the spread across samples within an epoch, and if it reaches zero then every
+sample has the same weight and WAMAL is MAXL with a rescaled auxiliary loss. The mean cannot show
+that, since a per-sample-constant weight is free to drift across epochs.
+
+The file is replaced, not appended, when a cell re-runs, with the prior attempt preserved as
+`metrics.jsonl.prev`. There is no within-run resume — an interrupted cell restarts from epoch 0 —
+so appending left two runs concatenated under one epoch axis that jumped backwards partway
+through, which every epoch-indexed analysis read as one implausible curve. This replaces `epoch_performances.pkl`:
 a pickle of a dataclass is fragile across environments, and nothing in the repo reads it back
 into a table anyway. Auxiliary fields are populated rather than hardcoded to 0.0 as the dense
 trainer does.
@@ -568,7 +577,8 @@ a mounted volume):
 ```
 results/<dataset>/<model_slug>/<arm>/k<shots>/seed<seed>/
     config.json        the full resolved ExperimentConfig
-    metrics.jsonl      one record per epoch
+    metrics.jsonl      one record per epoch; replaced on a re-run
+    metrics.jsonl.prev the previous attempt, if this cell was interrupted
     summary.json       best-val epoch, test acc at that epoch, wall time, peak memory
     print.log
     weights_epoch*.npz

@@ -43,10 +43,19 @@ def mark_complete(path: Path, summary: dict[str, Any]) -> None:
 
 
 class RunLogger:
-    """Appends to `print.log` and `metrics.jsonl` inside one run directory.
+    """Writes `metrics.jsonl` and appends `print.log` inside one run directory.
 
     Line-buffered and flushed per record: a preempted instance keeps whatever it
     had written, which is the difference between losing a run and losing an epoch.
+
+    The two files deliberately differ on truncation. There is no within-run
+    resume -- an interrupted cell restarts from epoch 0 -- so appending metrics
+    would leave two runs concatenated in one file, with the epoch counter jumping
+    backwards partway through. Every epoch-indexed analysis then silently reads a
+    curve that never happened. Any previous attempt is kept as
+    `metrics.jsonl.prev` rather than destroyed, since it is the only record of
+    why the first attempt died. `print.log` appends because both attempts'
+    narration is genuinely useful side by side.
     """
 
     def __init__(self, path: Path, echo: bool = True):
@@ -54,7 +63,10 @@ class RunLogger:
         self.path.mkdir(parents=True, exist_ok=True)
         self.echo = echo
         self._log = open(self.path / "print.log", "a", buffering=1)
-        self._metrics = open(self.path / "metrics.jsonl", "a", buffering=1)
+        metrics_path = self.path / "metrics.jsonl"
+        if metrics_path.exists() and metrics_path.stat().st_size > 0:
+            metrics_path.replace(self.path / "metrics.jsonl.prev")
+        self._metrics = open(metrics_path, "w", buffering=1)
 
     def print(self, *parts: object) -> None:
         line = " ".join(str(p) for p in parts)
