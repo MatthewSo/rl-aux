@@ -21,6 +21,12 @@ NUM_PRIMARY = 10
 PSI = 15
 NUM_FINE = NUM_PRIMARY * PSI
 
+# Must stay namespaced. The bare canonical name `clinc_oos` now 307-redirects
+# here, and current huggingface_hub follows the redirect but then builds an
+# `hf://datasets/clinc_oos@<sha>/...` URI from the original name and rejects its
+# own construction: "Repository id must be 'namespace/name'".
+HF_DATASET = "clinc/clinc_oos"
+
 # HF exposes no config named "full"; "plus" is data_full.json with a larger OOS
 # pool (100 train / 20 val / 30 test per in-scope intent, which is what we want).
 HF_CONFIG = "plus"
@@ -98,8 +104,8 @@ class CLINC150Hierarchical(Dataset):
                     "validation": "validation", "test": "test"}[split]
 
         # No trust_remote_code: datasets>=4.0 dropped loading scripts, and the
-        # hub serves clinc_oos as parquet.
-        raw = load_dataset("clinc_oos", HF_CONFIG, split=hf_split,
+        # hub serves this as parquet.
+        raw = load_dataset(HF_DATASET, HF_CONFIG, split=hf_split,
                            cache_dir=cache_dir)
 
         label_names = raw.features["intent"].names
