@@ -547,6 +547,35 @@ the whole phase fits on two 2080Tis.
 **Go/no-go:** if arm 4 does not beat arm 2 (human hierarchy) at `k = 5` and `k = 10`, stop and
 revisit the framing before spending 4090 time. That is claim C2, the headline.
 
+### 7.2z Measuring sub-label recovery correctly
+
+`final_test_aux_vs_fine_acc` (reported as `aux_recovery`) is `auxiliary.argmax(1) == fine`. For arm 2
+that is exactly right: its targets *are* the true fine labels, so the integer slots are anchored. For
+arms 3 and 4 it is close to meaningless, because `phi`'s clusters are identified only up to a
+permutation within each coarse block — nothing ties cluster 3 to intent 3. A `phi` that partitioned
+every domain perfectly would score 1/ψ, indistinguishable from noise. `llm/tests/test_recovery.py`
+demonstrates this directly: the naive metric reads **0.0600 on a perfect permuted recovery**, which is
+exactly what phase 1 reported.
+
+Use `llm/analysis/recovery.py` instead. It reads the dumped assignments and reports, per coarse block:
+
+- **matched accuracy** — the best permutation of clusters onto intents;
+- **mutual information** — which unlike matched accuracy credits merged and partial structure;
+
+both against a null built by shuffling assignments *within* each block, which preserves the marginals
+and destroys only the correspondence. That correction is not optional: uncorrected matched accuracy on
+purely random assignments is 0.29 at `k = 5` and 0.11 at `k = 100`, so any comparison across shot
+counts without it is measuring sample size.
+
+Phase 1, measured this way: lift `+0.064` at `k = 5` and `+0.107` at `k = 100`, with mutual
+information 1.14x and 6.6x the null. Calibrated against synthetic cases at the same geometry, that is
+roughly **15–20% of the hierarchy recovered** — weak, but real, and not the "at chance" the naive
+metric implied. All ψ sub-labels stay in use, so the entropy term is doing its job.
+
+This matters for how the negative result reads. "The learned labels are noise" was the most benign
+explanation for arm 4 failing, and it is ruled out: the labels carry real signal and arm 4 still loses
+to arm 1.
+
 ### 7.2a Phase 1 holdout — the saturation control (`phase1_holdout`)
 
 Phase 1's meta objective is the primary loss on the same batch `theta` was just fitted on, which is
@@ -577,6 +606,30 @@ counterpart, and `paired_deltas` pivots on `arm` through `pivot_table`, whose de
 `mean` — without `variant` as a key a holdout run would be silently folded into the base result.
 Absent `meta_holdout_frac` resolves to `base`, so the 200 existing runs keep their paths and their
 place in every table.
+
+### 7.2c Phase 1 ladder — how good must the labels be? (`phase1_ladder`)
+
+Phase 1 leaves a sharp question. Real hierarchical labels are worth `+0.8pp` at `k = 5`; `phi`'s
+labels are worth nothing; and `phi` recovers 15–20% of the hierarchy. Is 15–20% simply below the
+quality threshold at which an auxiliary task starts paying?
+
+`label_corruption` answers it directly by degrading arm 2's labels toward chance-within-block and
+reading the gain as a function of quality. Corruption is fixed per example rather than resampled each
+epoch — resampling would average the noise away over a run — and replacements stay inside the coarse
+block, so only *within-class* information degrades and the coarse signal the primary task needs is
+untouched. Val and test keep their true labels.
+
+`1 arm x 2 shots (5, 10) x 4 rungs (0.25, 0.5, 0.75, 1.0) x 5 seeds = 40 runs`, and they are cheap:
+arm 2 has no meta step, so ~200s a cell rather than arm 4's ~500s.
+
+The uncorrupted rung is deliberately absent: phase 1's arm-2 cells already are it, and re-measuring
+would risk an intercept that disagrees with the runs everything else is compared against. Note
+`corruption = 1.0` means *chance within block*, not "wrong": each label is redrawn uniformly over the ψ
+slots, so ~1/ψ of them land back on the truth.
+
+Expected reading: if the curve is steep near zero, then label quality is the binding constraint and
+`phi` would need to be much better before the method could pay. If it is flat until it collapses, then
+even good labels do not transfer, and the negative result is about the auxiliary task itself.
 
 ### 7.2b Phase 1 low-k — headroom probe (`phase1_lowk`)
 

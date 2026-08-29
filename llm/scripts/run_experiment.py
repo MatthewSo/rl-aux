@@ -54,6 +54,11 @@ def build_parser() -> argparse.ArgumentParser:
                            "memorised the train set. Withheld from every arm, so "
                            "baselines stay matched. Writes to a separate run "
                            "directory; needs k >= 2.")
+    meta.add_argument("--label-corruption", type=float, default=0.0,
+                      help="replace this fraction of TRAINING fine labels with a "
+                           "random label from the same coarse block. Only affects "
+                           "the human arm; traces how accuracy gain depends on "
+                           "auxiliary label quality. Val/test keep true labels.")
 
     net = p.add_argument_group("backbone")
     net.add_argument("--lora-r", type=int, default=16)
@@ -108,6 +113,7 @@ def config_from_args(args) -> ExperimentConfig:
         normalize_batch_weights=args.normalize_batch_weights,
         first_order=args.first_order,
         meta_holdout_frac=args.meta_holdout_frac,
+        label_corruption=args.label_corruption,
         lora_r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,

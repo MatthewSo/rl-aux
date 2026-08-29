@@ -201,6 +201,74 @@ def test_existing_base_results_aggregate_unchanged():
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_corruption_is_fixed_per_example_not_resampled():
+    """Resampling each epoch would average the noise away and measure nothing."""
+    from llm.datasets.fewshot import CorruptFineLabels
+
+    base = FakeSubset(num_fine=150, k=5)
+    a = CorruptFineLabels(base, 0.5, seed=0, psi=15, dataset_name="clinc150")
+    b = CorruptFineLabels(base, 0.5, seed=0, psi=15, dataset_name="clinc150")
+    assert a.fine_labels == b.fine_labels, "corruption is not deterministic"
+    # Stable across repeated access, which is what "not resampled" means in
+    # practice: the loader reads every example once per epoch.
+    assert [a[i][2] for i in range(20)] == [a[i][2] for i in range(20)]
+
+    c = CorruptFineLabels(base, 0.5, seed=1, psi=15, dataset_name="clinc150")
+    assert a.fine_labels != c.fine_labels, "different seeds gave the same corruption"
+    print(f"  deterministic in seed; {a.n_corrupted}/{len(base)} examples corrupted")
+
+
+def test_corruption_stays_inside_the_coarse_block():
+    """Outside its block the label is illegal under the mask, and the coarse
+    signal the primary task needs would be damaged too -- a different experiment."""
+    from llm.datasets.fewshot import CorruptFineLabels
+
+    base = FakeSubset(num_fine=150, k=5)
+    true = base.fine_labels
+    for frac in (0.25, 1.0):
+        d = CorruptFineLabels(base, frac, seed=0, psi=15, dataset_name="clinc150")
+        got = d.fine_labels
+        for i, (t, g) in enumerate(zip(true, got)):
+            assert t // 15 == g // 15, (
+                f"example {i}: {t} -> {g} crossed from block {t//15} to {g//15}"
+            )
+        changed = sum(1 for t, g in zip(true, got) if t != g)
+        # At frac=1.0 every example is redrawn uniformly over psi slots, so ~1/15
+        # of them land back on the truth. Full corruption means chance, not wrong.
+        expected = frac * (1 - 1 / 15)
+        assert abs(changed / len(true) - expected) < 0.06, (
+            f"frac={frac}: {changed/len(true):.3f} changed, expected ~{expected:.3f}"
+        )
+        print(f"  frac={frac}: {changed/len(true):.1%} differ from truth, "
+              f"all inside their block")
+
+
+def test_ladder_variants_are_separate_from_base_and_from_each_other():
+    from llm.analysis.aggregate import variant_of
+
+    rungs = [cfg(arm="human", label_corruption=c) for c in (0.25, 0.5, 1.0)]
+    ids = {c.cell_id() for c in rungs} | {cfg(arm="human").cell_id()}
+    assert len(ids) == 4, f"ladder rungs collide: {sorted(ids)}"
+    assert rungs[0].variant() == "corrupt0.25"
+    assert variant_of({"label_corruption": 0.5}) == "corrupt0.5"
+    # Both knobs at once must still be distinguishable.
+    both = cfg(arm="human", label_corruption=0.5, meta_holdout_frac=0.2)
+    assert both.variant() == "holdout0.2_corrupt0.5", both.variant()
+    print(f"  {sorted(v.variant() for v in rungs)} all distinct from base")
+
+
+def test_corruption_is_rejected_on_arms_that_ignore_fine_labels():
+    """A run directory saying corrupt0.5 must mean corruption actually happened."""
+    for arm in ("single", "maxl", "wamal"):
+        try:
+            cfg(arm=arm, label_corruption=0.5)
+        except ValueError:
+            continue
+        raise AssertionError(f"{arm} accepted label_corruption, which it ignores")
+    assert cfg(arm="human", label_corruption=0.5).label_corruption == 0.5
+    print("  rejected for single/maxl/wamal, accepted for human")
+
+
 def test_impossible_fractions_are_rejected():
     """A silent 0-example training split would be far worse than an error."""
     for shots, frac, why in [(1, 0.2, "k=1 leaves nothing to train on"),

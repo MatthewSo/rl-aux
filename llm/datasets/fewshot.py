@@ -101,6 +101,57 @@ class IndexSubset(Dataset):
         return [base_fine[i] for i in self.positions]
 
 
+class CorruptFineLabels(Dataset):
+    """Replaces a fraction of fine labels with a random one from the same block.
+
+    For the label-quality ladder. Phase 1 established that real hierarchical
+    labels help (+0.8pp at k=5) while phi's learned ones do not, and phi's labels
+    recover only ~15-20% of the true hierarchy. This interpolates between the two
+    so the gain can be read as a function of label quality, which turns "wamal
+    does not help" into a statement about how good learned labels would need to be.
+
+    Corruption is fixed once per example, not resampled per epoch: resampling
+    would average the noise away over a run and measure something else entirely.
+    Replacements stay inside the example's coarse block, so the corrupted label is
+    still a legal target under the hierarchy mask and only the *within-class*
+    information degrades -- the coarse signal the primary task needs is untouched.
+    """
+
+    def __init__(self, base: Dataset, frac: float, seed: int, psi: int,
+                 dataset_name: str = ""):
+        self.base = base
+        self.frac = frac
+        self.psi = psi
+
+        fine = np.asarray(base.fine_labels)
+        rng = np.random.default_rng(
+            derived_seed("label_corruption", dataset_name, seed,
+                         int(round(frac * 1000)))
+        )
+        corrupt = rng.random(len(fine)) < frac
+        block = fine // psi
+        # Uniform over the psi slots in the block, including the true one, so the
+        # ladder's endpoint is chance-within-block rather than guaranteed-wrong.
+        replacement = block * psi + rng.integers(0, psi, size=len(fine))
+        self._fine = np.where(corrupt, replacement, fine).astype(np.int64)
+        self.n_corrupted = int(corrupt.sum())
+
+    def __len__(self) -> int:
+        return len(self.base)
+
+    def __getitem__(self, idx: int):
+        text, coarse, _ = self.base[idx]
+        return text, coarse, int(self._fine[idx])
+
+    @property
+    def fine_labels(self) -> list[int]:
+        return self._fine.tolist()
+
+    @property
+    def true_fine_labels(self) -> list[int]:
+        return list(self.base.fine_labels)
+
+
 def stratified_holdout(subset: Dataset, frac: float, seed: int,
                        dataset_name: str = "") -> tuple[list[int], list[int]]:
     """Split positions of `subset` into (train, holdout), stratified by fine class.

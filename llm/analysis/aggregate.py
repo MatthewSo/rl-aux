@@ -51,8 +51,14 @@ def variant_of(config: dict) -> str:
     `arm`, and `pivot_table` silently takes the mean of duplicate keys, so a
     holdout run would be folded into the base result with no warning at all.
     """
+    parts = []
     frac = config.get("meta_holdout_frac") or 0.0
-    return f"holdout{frac:g}" if frac > 0 else "base"
+    if frac > 0:
+        parts.append(f"holdout{frac:g}")
+    corruption = config.get("label_corruption") or 0.0
+    if corruption > 0:
+        parts.append(f"corrupt{corruption:g}")
+    return "_".join(parts) if parts else "base"
 
 
 def to_frame(rows: list[dict]):

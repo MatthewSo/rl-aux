@@ -38,11 +38,40 @@ def make_cells(tmp: str, n: int) -> list:
 
 
 def test_phase_sizes_match_the_spec():
-    expected = {"phase1": 200, "phase1_lowk": 80, "phase2": 400, "smoke": 4}
+    expected = {"phase1": 200, "phase1_holdout": 40, "phase1_ladder": 40,
+                "phase1_lowk": 80, "phase2": 400, "smoke": 4}
     for name, want in expected.items():
         cells = sweep.enumerate_cells(sweep.PHASES[name], {})
         assert len(cells) == want, f"{name}: {len(cells)} cells, spec says {want}"
     print("  " + ", ".join(f"{k}={v}" for k, v in expected.items()))
+
+
+def test_ladder_reuses_phase1_as_its_zero_rung():
+    """The ladder must anchor on phase 1's human cells, not re-measure them.
+
+    Rerunning the uncorrupted rung would add cells that ought to be identical to
+    ones already on disk, and any disagreement between them would be noise the
+    ladder cannot absorb -- the curve's intercept is exactly what the other rungs
+    are compared to.
+    """
+    ladder = sweep.PHASES["phase1_ladder"]
+    assert 0.0 not in ladder.corruptions, (
+        f"ladder includes an uncorrupted rung {ladder.corruptions}; phase 1 is it"
+    )
+    cells = sweep.enumerate_cells(ladder, {})
+    assert all(c.arm == "human" for c in cells), "ladder must be the human arm only"
+    assert all(c.label_corruption > 0 for c in cells)
+
+    # Every rung sits at a shot count and seed phase 1 also covers, so the
+    # intercept exists for each curve.
+    phase1 = sweep.PHASES["phase1"]
+    assert set(ladder.shots) <= set(phase1.shots), (ladder.shots, phase1.shots)
+    assert set(ladder.seeds) <= set(phase1.seeds)
+
+    base_ids = {c.cell_id() for c in sweep.enumerate_cells(phase1, {})}
+    assert not base_ids & {c.cell_id() for c in cells}, "ladder collides with phase 1"
+    print(f"  {len(cells)} cells over rungs {ladder.corruptions}, "
+          f"anchored on phase 1's human cells at k={ladder.shots}")
 
 
 def test_lowk_extends_phase1_without_colliding_with_it():

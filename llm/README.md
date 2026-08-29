@@ -58,6 +58,21 @@ whether phi finds real sub-structure once its objective stops saturating, and it
 not confounded by the smaller training set. The withheld examples leave theta's
 training set for *every* arm, so the baselines stay matched.
 
+`phase1_ladder` asks how good learned labels would have to be. Real hierarchical
+labels are worth +0.8pp at k=5, phi's are worth nothing, and phi recovers only
+15–20% of the hierarchy — so this corrupts the human labels toward chance-within-
+block (`--label-corruption`) and reads the gain against label quality. Cheap: the
+human arm has no meta step. A steep curve near zero means quality is the binding
+constraint; a flat one means even good labels don't transfer.
+
+**Do not read `aux_recovery` from `summary.json` for the maxl/wamal arms.** It is
+`argmax == fine`, but phi's clusters are only identified up to a permutation
+within each coarse block, so it scores 1/psi on a *perfect* recovery — 0.0600,
+which is exactly what phase 1 reported. Use `python -m llm.analysis.recovery`,
+which does Hungarian matching and mutual information against a within-block
+shuffled null. The naive number is still valid for the human arm, whose targets
+are the true fine labels.
+
 `phase1_lowk` asks a different question — phase 1 runs on a task already at 90.6%
 at k=5, leaving ~7pp of range — but run it *after* `phase1_holdout`. Phase 1's
 deficit shrinks monotonically as k grows, which is backwards from a headroom story,

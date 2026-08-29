@@ -86,6 +86,17 @@ class ExperimentConfig:
     # more data, and the deficit under test would be confounded by the split.
     meta_holdout_frac: float = 0.0
 
+    # Fraction of *training* fine labels replaced by a random label from the same
+    # coarse block, for the label-quality ladder. Only the `human` arm reads fine
+    # labels, so it is only meaningful there.
+    #
+    # Phase 1 showed human labels help (+0.8pp at k=5) while phi's learned labels
+    # do not, and that phi recovers roughly 15-20% of the true hierarchy. Sweeping
+    # this traces the gain against label quality, which says whether phi's labels
+    # are simply below the threshold where an auxiliary task starts paying.
+    # Val and test keep their true labels, so evaluation is unaffected.
+    label_corruption: float = 0.0
+
     # --- backbone / adapters ----------------------------------------------
     lora_r: int = 16
     lora_alpha: int = 32
@@ -158,6 +169,18 @@ class ExperimentConfig:
                     f"of {self.shots} examples per fine class, leaving "
                     f"{self.shots - held} to train on. Needs k >= 2."
                 )
+
+        if not 0.0 <= self.label_corruption <= 1.0:
+            raise ValueError(
+                f"label_corruption must be in [0.0, 1.0], got {self.label_corruption}"
+            )
+        if self.label_corruption > 0 and not self.uses_human_labels:
+            raise ValueError(
+                f"label_corruption={self.label_corruption} has no effect on arm "
+                f"{self.arm!r}, which does not read the human fine labels. Setting "
+                "it here would produce a run directory implying a corruption that "
+                "never happened."
+            )
 
         defaults = DATASET_DEFAULTS[self.dataset]
         if self.num_primary is None:
@@ -260,9 +283,12 @@ class ExperimentConfig:
         must never be averaged in with `base`: `aggregate` groups on this, and
         `cell_id` puts it in the path so the two cannot even share a directory.
         """
+        parts = []
         if self.meta_holdout_frac > 0:
-            return f"holdout{self.meta_holdout_frac:g}"
-        return "base"
+            parts.append(f"holdout{self.meta_holdout_frac:g}")
+        if self.label_corruption > 0:
+            parts.append(f"corrupt{self.label_corruption:g}")
+        return "_".join(parts) if parts else "base"
 
     def cell_id(self) -> str:
         # The variant rides on the arm segment because it is part of the method,

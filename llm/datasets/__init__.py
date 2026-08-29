@@ -11,12 +11,18 @@ from llm.datasets.collate import (
     TextCollator,
     build_tokenizer,
 )
-from llm.datasets.fewshot import FewShotSubset, IndexSubset, stratified_holdout
+from llm.datasets.fewshot import (
+    CorruptFineLabels,
+    FewShotSubset,
+    IndexSubset,
+    stratified_holdout,
+)
 
 __all__ = [
     "build_dataset",
     "build_loaders",
     "build_tokenizer",
+    "CorruptFineLabels",
     "FewShotSubset",
     "IndexSubset",
     "stratified_holdout",
@@ -55,6 +61,13 @@ def build_loaders(cfg, tokenizer) -> dict[str, DataLoader]:
         dataset_name=cfg.dataset,
         num_fine=cfg.num_auxiliary,
     )
+
+    # Train only: val and test keep their true fine labels so that evaluation and
+    # the recovery metrics stay comparable across the ladder.
+    if cfg.label_corruption > 0:
+        train = CorruptFineLabels(
+            train, cfg.label_corruption, cfg.seed, cfg.psi, cfg.dataset
+        )
 
     # The withheld split leaves theta's training set for every arm, so that the
     # baselines wamal is compared against saw exactly the same examples. Only the

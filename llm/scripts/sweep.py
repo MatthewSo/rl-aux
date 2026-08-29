@@ -35,6 +35,9 @@ class Phase:
     seeds: tuple[int, ...]
     note: str = ""
     meta_holdout_frac: float = 0.0
+    # Swept per cell, unlike meta_holdout_frac, because the ladder's whole point
+    # is the shape of the curve across levels.
+    corruptions: tuple[float, ...] = (0.0,)
 
 
 PHASES: dict[str, Phase] = {
@@ -75,6 +78,27 @@ PHASES: dict[str, Phase] = {
         seeds=tuple(range(5)),
         note="meta objective on withheld data; isolates the saturation confound",
         meta_holdout_frac=0.2,
+    ),
+    # How good would learned labels have to be? Phase 1 says real hierarchical
+    # labels are worth +0.8pp at k=5 while phi's are worth nothing, and a
+    # permutation-invariant reading of the dumps puts phi at roughly 15-20% of the
+    # true hierarchy -- not the "at chance" that the naive aux_recovery metric
+    # implied. So the open question is whether phi's labels are simply below the
+    # quality threshold where an auxiliary task starts paying.
+    #
+    # This corrupts the human labels toward chance-within-block and reads the gain
+    # as a function of quality. Cheap: the human arm has no meta step, so these
+    # cost ~200s each rather than wamal's ~500s. The 0.0 rung is deliberately
+    # omitted -- phase 1's human cells already are it, and rerunning would only
+    # risk disagreeing with them.
+    "phase1_ladder": Phase(
+        datasets=("clinc150",),
+        models=("opt-125m",),
+        arms=("human",),
+        shots=(5, 10),
+        seeds=tuple(range(5)),
+        corruptions=(0.25, 0.5, 0.75, 1.0),
+        note="label-quality ladder; how good must auxiliary labels be to help",
     ),
     # Phase 1 found wamal ~1pp below single at every k, on a task already at 90.6%
     # with k=5 and 97.7% at k=100 -- about 7pp of total range. This asks whether
@@ -122,12 +146,16 @@ def enumerate_cells(phase: Phase, overrides: dict) -> list[ExperimentConfig]:
     # Seed is the outer loop so that an interrupted sweep still yields complete
     # low-seed groups: 3 seeds of everything supports an error bar, 10 seeds of
     # one arm supports nothing.
-    for seed, dataset, model, shots, arm in itertools.product(
-        phase.seeds, phase.datasets, phase.models, phase.shots, phase.arms
+    for seed, dataset, model, shots, arm, corruption in itertools.product(
+        phase.seeds, phase.datasets, phase.models, phase.shots, phase.arms,
+        phase.corruptions,
     ):
+        extra = dict(overrides)
+        if corruption > 0:
+            extra["label_corruption"] = corruption
         cfg = ExperimentConfig(
             dataset=dataset, model=model, arm=arm, shots=shots, seed=seed,
-            **overrides,
+            **extra,
         ).resolve()
         cells.append(cfg)
     return cells
@@ -238,6 +266,8 @@ def cell_command(cfg, gpu: int, force: bool) -> list[str]:
     # the ones that produced the existing results.
     if cfg.meta_holdout_frac > 0:
         cmd += ["--meta-holdout-frac", str(cfg.meta_holdout_frac)]
+    if cfg.label_corruption > 0:
+        cmd += ["--label-corruption", str(cfg.label_corruption)]
     if cfg.results_dir:
         cmd += ["--results-dir", cfg.results_dir]
     if force:
