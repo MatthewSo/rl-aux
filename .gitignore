@@ -13,6 +13,10 @@ env/
 results/
 trained_models/
 vast_artifacts/
+# Superseded result trees live beside vast_artifacts/, never inside it: run
+# discovery is recursive, and a nested second tree double-counts every seed it
+# duplicates. See llm/FINDINGS.md section 7.
+vast_artifacts_superseded/
 *.pt
 *.pth
 *.ckpt

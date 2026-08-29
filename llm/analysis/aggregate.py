@@ -36,7 +36,46 @@ def load_runs(results_dir: Path) -> "list[dict]":
         row["variant"] = variant_of(config)
         row["path"] = str(marker.parent)
         rows.append(row)
+
+    reject_duplicate_cells(rows)
     return rows
+
+
+def reject_duplicate_cells(rows: "list[dict]") -> None:
+    """Refuse to average two runs that claim the same experimental coordinates.
+
+    The search is `rglob`, so any second tree of results nested anywhere under
+    `results_dir` is picked up too -- an older partial sweep kept for reference, a
+    restored backup, a synced copy dropped one level down. Those runs sit at
+    coordinates that already exist, and every downstream mean would quietly weight
+    the repeated seeds twice. The shift is small enough to look like ordinary noise
+    rather than like a bug, which is exactly what makes it worth an exception:
+    nothing about the printed table would tell you it happened.
+    """
+    seen: dict[tuple, list[str]] = {}
+    for row in rows:
+        key = (row.get("dataset"), row.get("model"), row.get("arm"),
+               row.get("variant"), row.get("shots"), row.get("seed"))
+        seen.setdefault(key, []).append(row["path"])
+
+    clashes = {k: v for k, v in seen.items() if len(v) > 1}
+    if not clashes:
+        return
+
+    lines = []
+    for key, paths in sorted(clashes.items(), key=lambda kv: str(kv[0]))[:5]:
+        dataset, model, arm, variant, shots, seed = key
+        lines.append(f"  {dataset}/{model}/{arm}[{variant}]/k{shots}/seed{seed}")
+        lines.extend(f"    {p}" for p in paths)
+    more = "" if len(clashes) <= 5 else f"\n  ... and {len(clashes) - 5} more"
+
+    raise ValueError(
+        f"{len(clashes)} cell(s) appear more than once under the results tree, so "
+        "their seeds would be double-counted in every average:\n"
+        + "\n".join(lines) + more
+        + "\n\nMove the superseded tree outside the results directory, or point "
+        "RESULTS_DIR at just the one you mean."
+    )
 
 
 def variant_of(config: dict) -> str:

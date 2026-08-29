@@ -212,9 +212,25 @@ Synced to `vast_artifacts/` (54MB; checkpoints deliberately left on the box):
 | `.../dump_epoch*.npz` | φ's sub-label assignments (406 files) — input to `recovery.py` |
 | `.../config.json` | full resolved config, so any cell can be re-run exactly |
 | `_analysis/` | aggregate tables |
+| `checkpoints/` | 3 specimen `best_model.pt` (wamal k100/k5, human k5) |
 | `logs/sweep.log` | phase 1, 200 cells, 0 failures, 159.2 min |
 | `logs/sweep_phase1_holdout.log` | holdout, 26/40 at pause |
 | `logs/deploy_next.log` | chained deploy: git pull, test run, phase launches |
+| `logs/deploy_next.sh` | the script that ran it, for provenance |
+
+Deliberately not synced: the other 237 `best_model.pt` (3.5GB). φ's actual
+assignments are in the `.npz` dumps, which is what the recovery analysis reads, so
+a checkpoint is only needed to run φ on *new* text. Three are kept as specimens —
+the k=100 one is the highest-recovery run in the grid.
+
+`vast_artifacts_superseded/` holds 29 cells from a partial sweep that predates the
+weight-dispersion logging and the `metrics.jsonl` truncation fix. Phase 1 re-ran
+all of them properly. It is kept **outside** `vast_artifacts/` on purpose: run
+discovery is recursive, so a second tree nested inside the results directory gets
+loaded too, and its cells sit at coordinates that already exist. That double-counts
+the repeated seeds in every average, by a margin that reads as noise — it moved the
+k=5 single mean from 0.904911 to 0.905074 with nothing in the output to flag it.
+`load_runs` now raises on duplicate cell coordinates instead of averaging them.
 
 Also on wandb under project `wamal-lm`, grouped by phase.
 

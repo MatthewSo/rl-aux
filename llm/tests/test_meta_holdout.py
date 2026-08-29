@@ -19,9 +19,12 @@ Two classes of failure are worth testing, and the second is the dangerous one:
 
 from __future__ import annotations
 
+import json
+import tempfile
 import traceback
+from pathlib import Path
 
-from llm.analysis.aggregate import variant_of
+from llm.analysis.aggregate import load_runs, variant_of
 from llm.config import ExperimentConfig
 
 
@@ -284,6 +287,69 @@ def test_impossible_fractions_are_rejected():
         c = cfg(shots=shots, meta_holdout_frac=frac)
         assert c.variant().startswith("holdout")
     print("  rejects k=1, frac>=0.5 and negatives; accepts k=2 upward")
+
+
+def test_a_second_results_tree_cannot_be_averaged_in_silently():
+    """`variant` separates two *methods*; nothing separated two *copies*.
+
+    The run search is recursive, so a superseded tree left anywhere below the
+    results directory is loaded as well. Its cells sit at coordinates that already
+    exist, so the repeated seeds get double weight in every mean -- by a margin
+    small enough to pass for noise. This happened for real: syncing an older
+    partial sweep into `vast_artifacts/` moved the k=5 single mean from 0.904911 to
+    0.905074 with no indication that anything was wrong.
+    """
+    def write_cell(root: Path, sub: str, arm: str, shots: int, seed: int) -> None:
+        d = root / sub / "clinc150" / "opt-125m" / arm / f"k{shots}" / f"seed{seed}"
+        d.mkdir(parents=True)
+        (d / "DONE").touch()
+        (d / "summary.json").write_text(json.dumps({
+            "dataset": "clinc150", "model": "opt-125m", "arm": arm,
+            "shots": shots, "seed": seed, "test_acc_at_best_val": 0.9,
+            "final_test_acc": 0.9, "final_test_aux_vs_fine_acc": 0.006,
+            "wall_time_s": 100.0,
+        }))
+        (d / "config.json").write_text(json.dumps({"optimizer": "sgd"}))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        write_cell(root, ".", "single", 5, 0)
+        write_cell(root, ".", "single", 5, 1)
+        assert len(load_runs(root)) == 2, "clean tree should load"
+
+        # The same cell again, one level down, as a synced older sweep would land.
+        write_cell(root, "results_pre_weightstd", "single", 5, 0)
+        try:
+            load_runs(root)
+        except ValueError as exc:
+            assert "double-counted" in str(exc), str(exc)
+            assert "results_pre_weightstd" in str(exc), "must name the offender"
+            print("  duplicate cell rejected, and the exception names both paths")
+        else:
+            raise AssertionError("a duplicated cell was averaged in silently")
+
+
+def test_distinct_variants_are_not_mistaken_for_duplicates():
+    """The guard must not fire on a holdout run sitting beside its base run."""
+    def write_cell(root: Path, arm_dir: str, arm: str, frac: float) -> None:
+        d = root / "clinc150" / "opt-125m" / arm_dir / "k5" / "seed0"
+        d.mkdir(parents=True)
+        (d / "DONE").touch()
+        (d / "summary.json").write_text(json.dumps({
+            "dataset": "clinc150", "model": "opt-125m", "arm": arm, "shots": 5,
+            "seed": 0, "test_acc_at_best_val": 0.9, "final_test_acc": 0.9,
+            "final_test_aux_vs_fine_acc": 0.006, "wall_time_s": 100.0,
+        }))
+        (d / "config.json").write_text(json.dumps({"meta_holdout_frac": frac}))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        write_cell(root, "wamal", "wamal", 0.0)
+        write_cell(root, "wamal__holdout0.2", "wamal", 0.2)
+        rows = load_runs(root)
+        assert len(rows) == 2, rows
+        assert {r["variant"] for r in rows} == {"base", "holdout0.2"}
+        print("  base and holdout0.2 coexist without tripping the guard")
 
 
 def main() -> int:
