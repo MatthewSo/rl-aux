@@ -38,11 +38,61 @@ def make_cells(tmp: str, n: int) -> list:
 
 
 def test_phase_sizes_match_the_spec():
-    expected = {"phase1": 200, "phase2": 400, "smoke": 4}
+    expected = {"phase1": 200, "phase1_lowk": 80, "phase2": 400, "smoke": 4}
     for name, want in expected.items():
         cells = sweep.enumerate_cells(sweep.PHASES[name], {})
         assert len(cells) == want, f"{name}: {len(cells)} cells, spec says {want}"
     print("  " + ", ".join(f"{k}={v}" for k, v in expected.items()))
+
+
+def test_lowk_extends_phase1_without_colliding_with_it():
+    """The low-k probe must join phase 1's curve, not fork it.
+
+    Same dataset, model, arms and seeds, disjoint shot values. If any coordinate
+    other than `shots` differed, the two k grids would not be comparable, and the
+    whole point is to read them as one curve.
+    """
+    lowk = sweep.PHASES["phase1_lowk"]
+    phase1 = sweep.PHASES["phase1"]
+    for field in ("datasets", "models", "arms", "seeds"):
+        assert getattr(lowk, field) == getattr(phase1, field), (
+            f"{field} differs from phase1, so the results are not comparable"
+        )
+    assert not set(lowk.shots) & set(phase1.shots), "shot grids overlap"
+
+    ids = {c.cell_id() for c in sweep.enumerate_cells(phase1, {})}
+    low_ids = {c.cell_id() for c in sweep.enumerate_cells(lowk, {})}
+    assert not ids & low_ids, "a cell appears in both phases"
+    print(f"  k={lowk.shots} extends k={phase1.shots}, "
+          f"{len(low_ids)} new cells, no collisions")
+
+
+def test_low_shot_epoch_budgets_follow_the_existing_trend():
+    """An unlisted k silently falls back to the nearest listed budget.
+
+    k=1 and k=2 defaulting to k=5's 40 epochs would quietly give the low-k cells
+    fewer optimizer steps than anything else in the grid, confounding the very
+    comparison the probe exists to make.
+    """
+    from llm.config import EPOCHS_BY_SHOTS
+
+    for k in (1, 2):
+        assert k in EPOCHS_BY_SHOTS, f"k={k} has no explicit epoch budget"
+
+    budgets = [EPOCHS_BY_SHOTS[k] for k in sorted(EPOCHS_BY_SHOTS)]
+    assert budgets == sorted(budgets, reverse=True), (
+        f"epoch budget must fall monotonically as k rises, got {budgets}"
+    )
+
+    # Resolve through the real path rather than reading the table twice.
+    for k, want in ((1, 80), (2, 60)):
+        cfg = ExperimentConfig(dataset="clinc150", model="opt-125m", arm="wamal",
+                               shots=k, seed=0).resolve()
+        assert cfg.total_epoch == want, (
+            f"k={k} resolved to {cfg.total_epoch} epochs, expected {want}"
+        )
+    print(f"  budgets by k: "
+          + ", ".join(f"{k}->{EPOCHS_BY_SHOTS[k]}" for k in sorted(EPOCHS_BY_SHOTS)))
 
 
 def test_cells_are_unique():

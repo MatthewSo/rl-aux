@@ -55,6 +55,20 @@ PHASES: dict[str, Phase] = {
         seeds=tuple(range(10)),
         note="signal check; go/no-go is wamal > human at k=5 and k=10",
     ),
+    # Phase 1 found wamal ~1pp below single at every k, on a task already at 90.6%
+    # with k=5 and 97.7% at k=100 -- about 7pp of total range. This asks whether
+    # the deficit is about headroom by going where accuracy is genuinely lower.
+    # Same dataset, model, arms and seed count as phase 1, so the k grids join up
+    # into one curve. A wamal deficit that persists at k=1 rules headroom out,
+    # which is the more informative outcome of the two.
+    "phase1_lowk": Phase(
+        datasets=("clinc150",),
+        models=("opt-125m",),
+        arms=ARMS,
+        shots=(1, 2),
+        seeds=tuple(range(10)),
+        note="headroom probe: extends phase 1's k grid down to 1 and 2 shots",
+    ),
     "phase2": Phase(
         datasets=("clinc150", "newsgroups"),
         models=("granite-350m", "olmo2-1b"),

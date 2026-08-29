@@ -38,9 +38,17 @@ python -m llm.scripts.sweep --phase phase1 --dry-run
 python -m llm.scripts.sweep --phase phase1 --gpu 0
 
 # these cells are host-bound, not GPU-bound (~1.8GB of 46GB on an L40S), so pack
-# several onto each card: 4 GPUs x 2 = 8 concurrent
-python -m llm.scripts.sweep --phase phase2 --gpus 0,1,2,3 --pack 2 --keep-going
+# several onto each card: 4 GPUs x 4 = 16 concurrent saturated an L40S box
+python -m llm.scripts.sweep --phase phase2 --gpus 0,1,2,3 --pack 4 --keep-going
 ```
+
+Phases are `smoke`, `phase0` (LR calibration), `phase1` (signal check, 200 cells),
+`phase1_lowk` (extends phase 1's k grid down to 1 and 2 shots, 80 cells), `phase2`
+(main result, 400) and `phase3` (robustness). `phase1_lowk` exists because phase 1
+runs on a task already at 90.6% accuracy with k=5, leaving ~7pp of range for a
+method to work in; it asks whether the arm ordering changes where accuracy is
+genuinely low. Its cells cost *more* than k=5, not less — per-epoch cost is about
+`3.0 + 0.33k` seconds, so the larger epoch budget outweighs the smaller train set.
 
 **Before destroying the instance:**
 

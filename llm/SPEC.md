@@ -547,6 +547,26 @@ the whole phase fits on two 2080Tis.
 **Go/no-go:** if arm 4 does not beat arm 2 (human hierarchy) at `k = 5` and `k = 10`, stop and
 revisit the framing before spending 4090 time. That is claim C2, the headline.
 
+### 7.2b Phase 1 low-k — headroom probe (`phase1_lowk`)
+
+The first phase-1 results put arm 4 roughly 1pp *below* arm 1 at every `k`, on a primary task
+already at 90.6% with `k = 5` and 97.7% at `k = 100` — about 7pp of total dynamic range, against a
+0.9pp benefit from the true human hierarchy. One reading is that there is too little headroom for
+learned auxiliary labels to demonstrate anything.
+
+This probe tests that directly by extending the `k` grid downward: `k in {1, 2}`, same dataset,
+model, arms and 10 seeds, so the two grids read as one curve. **80 runs.**
+
+Note the outcome is informative either way, and the negative direction more so. If arm 4's deficit
+shrinks or reverses where accuracy is genuinely low, headroom was the constraint and there is a
+regime where the method works. If the deficit persists at `k = 1`, headroom is ruled out and the
+explanation lies in the mechanism — the meta objective saturating (see 10.x) or the label network
+lacking the data to find ψ sub-classes per domain.
+
+These cells are *more* expensive than `k = 5`, not less: measured per-epoch cost is about
+`3.0 + 0.33k` seconds, so the larger epoch budgets that low `k` requires outweigh the smaller
+training set.
+
 ### 7.3 Phase 2 — main result
 
 Same grid at 5 seeds, on Granite-4.0-350M-Base and OLMo-2-1B-Base, both datasets.

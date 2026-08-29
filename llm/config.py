@@ -19,7 +19,13 @@ DATASETS = ("clinc150", "newsgroups")
 # Fewer examples means fewer optimizer steps per epoch, so low-k cells need more
 # epochs to see a comparable number of updates. Provisional; phase 0 retunes it.
 # Identical across arms within a cell by construction -- that is the point.
-EPOCHS_BY_SHOTS: dict[int, int] = {5: 40, 10: 30, 25: 20, 50: 15, 100: 10}
+#
+# k=1 and k=2 continue the existing trend rather than inventing one: each doubling
+# of k multiplies the budget by ~0.72 across the original five entries, so halving
+# from k=5 gives ~55 and halving again ~80. Note this makes the low-k cells more
+# expensive than k=5, not cheaper -- per-epoch cost is roughly 3.0 + 0.33k seconds,
+# so the extra epochs outweigh the smaller training set.
+EPOCHS_BY_SHOTS: dict[int, int] = {1: 80, 2: 60, 5: 40, 10: 30, 25: 20, 50: 15, 100: 10}
 
 DATASET_DEFAULTS: dict[str, dict[str, Any]] = {
     "clinc150": {"num_primary": 10, "psi": 15, "max_len": 64},
