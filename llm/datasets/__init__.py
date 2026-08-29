@@ -11,13 +11,15 @@ from llm.datasets.collate import (
     TextCollator,
     build_tokenizer,
 )
-from llm.datasets.fewshot import FewShotSubset
+from llm.datasets.fewshot import FewShotSubset, IndexSubset, stratified_holdout
 
 __all__ = [
     "build_dataset",
     "build_loaders",
     "build_tokenizer",
     "FewShotSubset",
+    "IndexSubset",
+    "stratified_holdout",
     "TextCollator",
     "IndexedTextCollator",
     "IndexedDataset",
@@ -54,6 +56,17 @@ def build_loaders(cfg, tokenizer) -> dict[str, DataLoader]:
         num_fine=cfg.num_auxiliary,
     )
 
+    # The withheld split leaves theta's training set for every arm, so that the
+    # baselines wamal is compared against saw exactly the same examples. Only the
+    # arms with a meta step get a loader over the remainder.
+    meta_subset = None
+    if cfg.meta_holdout_frac > 0:
+        keep, held = stratified_holdout(
+            train, cfg.meta_holdout_frac, cfg.seed, cfg.dataset
+        )
+        meta_subset = IndexSubset(train, held)
+        train = IndexSubset(train, keep)
+
     loaders = {
         "train": DataLoader(
             IndexedDataset(train),
@@ -67,6 +80,20 @@ def build_loaders(cfg, tokenizer) -> dict[str, DataLoader]:
             pin_memory=True,
         )
     }
+    if meta_subset is not None and cfg.needs_meta_step:
+        loaders["meta"] = DataLoader(
+            IndexedDataset(meta_subset),
+            batch_size=cfg.batch_size,
+            shuffle=True,
+            collate_fn=collator,
+            # Deliberately 0: this loader is re-iterated several times per epoch
+            # (it is much smaller than train), and respawning workers each cycle
+            # would cost more than the loading it saves.
+            num_workers=0,
+            generator=dataloader_generator(cfg.seed + 1),
+            drop_last=False,
+        )
+        loaders["meta_size"] = len(meta_subset)
     for split in ("val", "test"):
         data = build_dataset(cfg.dataset, split, cfg.seed)
         loaders[split] = DataLoader(

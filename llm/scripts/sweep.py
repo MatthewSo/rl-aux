@@ -34,6 +34,7 @@ class Phase:
     shots: tuple[int, ...]
     seeds: tuple[int, ...]
     note: str = ""
+    meta_holdout_frac: float = 0.0
 
 
 PHASES: dict[str, Phase] = {
@@ -54,6 +55,26 @@ PHASES: dict[str, Phase] = {
         shots=(5, 10, 25, 50, 100),
         seeds=tuple(range(10)),
         note="signal check; go/no-go is wamal > human at k=5 and k=10",
+    ),
+    # Phase 1's deficit tracks how long the meta signal survives: the outer loss is
+    # measured on the batch theta was just fitted on, so it reaches ~1e-5 halfway
+    # through a k=5 run and phi stops learning, while at k=100 it stays alive for
+    # 87% of the run -- which is the ordering of wamal's results. This measures the
+    # outer loss on withheld data instead, at the two shot counts the go/no-go
+    # rests on. All four arms, because the withheld examples leave theta's training
+    # set for every arm and the baselines must stay matched.
+    #
+    # Read aux_recovery first, not accuracy: it is the direct test of whether phi
+    # finds real sub-structure once its objective stops saturating, and it is not
+    # confounded by the smaller training set.
+    "phase1_holdout": Phase(
+        datasets=("clinc150",),
+        models=("opt-125m",),
+        arms=ARMS,
+        shots=(5, 10),
+        seeds=tuple(range(5)),
+        note="meta objective on withheld data; isolates the saturation confound",
+        meta_holdout_frac=0.2,
     ),
     # Phase 1 found wamal ~1pp below single at every k, on a task already at 90.6%
     # with k=5 and 97.7% at k=100 -- about 7pp of total range. This asks whether
@@ -170,6 +191,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--num-workers", type=int, default=None,
                    help="dataloader workers per cell. Lower it when packing, "
                         "since total processes are gpus x pack x (1 + workers).")
+    p.add_argument("--meta-holdout-frac", type=float, default=None,
+                   help="override the phase's meta holdout fraction. Writes to "
+                        "separate run directories, so it cannot collide with or "
+                        "be averaged into the base results.")
     p.add_argument("--wandb", action="store_true",
                    help="mirror every cell to Weights & Biases, grouped by phase")
     p.add_argument("--wandb-project", default="wamal-lm")
@@ -209,6 +234,10 @@ def cell_command(cfg, gpu: int, force: bool) -> list[str]:
         "--gpu", str(gpu),
         "--num-workers", str(cfg.num_workers),
     ]
+    # Only when non-default, so the base sweep's command lines stay identical to
+    # the ones that produced the existing results.
+    if cfg.meta_holdout_frac > 0:
+        cmd += ["--meta-holdout-frac", str(cfg.meta_holdout_frac)]
     if cfg.results_dir:
         cmd += ["--results-dir", cfg.results_dir]
     if force:
@@ -335,6 +364,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     if args.num_workers is not None:
         overrides["num_workers"] = args.num_workers
+    if args.meta_holdout_frac is not None:
+        overrides["meta_holdout_frac"] = args.meta_holdout_frac
+    elif phase.meta_holdout_frac > 0:
+        overrides["meta_holdout_frac"] = phase.meta_holdout_frac
 
     cells = enumerate_cells(phase, overrides)
     pending = [c for c in cells if args.force or not is_complete(c)]

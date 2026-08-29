@@ -27,14 +27,32 @@ def load_runs(results_dir: Path) -> "list[dict]":
             continue
         row = json.loads(summary_path.read_text())
         config_path = marker.parent / "config.json"
+        config = {}
         if config_path.exists():
             config = json.loads(config_path.read_text())
             row["optimizer"] = config.get("optimizer")
             row["primary_lr"] = config.get("primary_lr")
             row["total_epoch"] = config.get("total_epoch")
+        row["variant"] = variant_of(config)
         row["path"] = str(marker.parent)
         rows.append(row)
     return rows
+
+
+def variant_of(config: dict) -> str:
+    """Which method a run used, for keeping incomparable runs out of one average.
+
+    Derived from the config rather than read from the summary so that runs
+    predating the field still resolve -- absent `meta_holdout_frac` means the
+    paper-faithful path, which is what those runs did.
+
+    This has to be a grouping key everywhere. `summarise` would otherwise average
+    two different methods into one row, and `paired_deltas` is worse: it pivots on
+    `arm`, and `pivot_table` silently takes the mean of duplicate keys, so a
+    holdout run would be folded into the base result with no warning at all.
+    """
+    frac = config.get("meta_holdout_frac") or 0.0
+    return f"holdout{frac:g}" if frac > 0 else "base"
 
 
 def to_frame(rows: list[dict]):
@@ -50,7 +68,7 @@ def to_frame(rows: list[dict]):
 def summarise(frame):
     """Mean/std over seeds, which is the unit of variation the paper omits."""
     grouped = (
-        frame.groupby(["dataset", "model", "shots", "arm"], observed=True)
+        frame.groupby(["dataset", "model", "variant", "shots", "arm"], observed=True)
         .agg(
             acc_mean=("test_acc_at_best_val", "mean"),
             acc_std=("test_acc_at_best_val", "std"),
@@ -73,7 +91,10 @@ def paired_deltas(frame, baseline: str = "human", treatment: str = "wamal"):
     """
     import pandas as pd
 
-    keys = ["dataset", "model", "shots", "seed"]
+    # `variant` in the index, not just the groupby: arms are only comparable
+    # within one method, and leaving it out would let pivot_table average a
+    # holdout run together with its base counterpart.
+    keys = ["dataset", "model", "variant", "shots", "seed"]
     wide = frame.pivot_table(
         index=keys, columns="arm", values="test_acc_at_best_val", observed=True
     )
@@ -83,7 +104,7 @@ def paired_deltas(frame, baseline: str = "human", treatment: str = "wamal"):
     paired = wide[[baseline, treatment]].dropna().reset_index()
     paired["delta"] = paired[treatment] - paired[baseline]
     out = (
-        paired.groupby(["dataset", "model", "shots"])
+        paired.groupby(["dataset", "model", "variant", "shots"])
         .agg(delta_mean=("delta", "mean"),
              delta_std=("delta", "std"),
              n_pairs=("delta", "size"),

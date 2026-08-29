@@ -547,6 +547,37 @@ the whole phase fits on two 2080Tis.
 **Go/no-go:** if arm 4 does not beat arm 2 (human hierarchy) at `k = 5` and `k = 10`, stop and
 revisit the framing before spending 4090 time. That is claim C2, the headline.
 
+### 7.2a Phase 1 holdout — the saturation control (`phase1_holdout`)
+
+Phase 1's meta objective is the primary loss on the same batch `theta` was just fitted on, which is
+paper-faithful. Measured consequence: it decays to ~1e-5 by the halfway point of a `k = 5` run, so
+`phi` receives usable gradient for only half the epochs. The fraction of each run over which the
+signal survives rises with `k` — 50% at `k = 5`, 58% at 25, 87% at 100 — and that is the same
+ordering as arm 4's results, which go from −1.12pp against arm 1 at `k = 5` to +0.07pp at `k = 100`.
+The deficit is largest exactly where the meta signal dies soonest.
+
+`meta_holdout_frac` withholds a stratified fraction of the k-shot subset from `theta` and measures
+the outer loss on it instead. Withheld data cannot be memorised, so the objective does not saturate.
+
+Two design points matter more than the flag itself:
+
+- **The withheld examples leave `theta`'s training set for every arm, not just the meta ones.**
+  Otherwise arm 4 would be compared against baselines that trained on more data, and the deficit
+  under test would be confounded by the split rather than explained by it.
+- **`aux_recovery` is the primary readout, not accuracy.** It measures directly whether `phi` finds
+  real sub-structure once its objective stops saturating, and unlike accuracy it is not confounded
+  by the smaller training set. Phase 1 has it pinned at chance (~0.060 against 1/ψ = 0.067) at
+  *every* `k`, including 100.
+
+`4 arms x 2 shots (5, 10) x 5 seeds = 40 runs`, at the two shot counts the go/no-go rests on.
+
+Runs land under `.../<arm>__holdout<frac>/...` and carry a `variant` of `holdout<frac>`, which
+`aggregate` groups on. That is not cosmetic: a holdout run shares `(arm, shots, seed)` with its base
+counterpart, and `paired_deltas` pivots on `arm` through `pivot_table`, whose default aggfunc is
+`mean` — without `variant` as a key a holdout run would be silently folded into the base result.
+Absent `meta_holdout_frac` resolves to `base`, so the 200 existing runs keep their paths and their
+place in every table.
+
 ### 7.2b Phase 1 low-k — headroom probe (`phase1_lowk`)
 
 The first phase-1 results put arm 4 roughly 1pp *below* arm 1 at every `k`, on a primary task
@@ -556,6 +587,13 @@ learned auxiliary labels to demonstrate anything.
 
 This probe tests that directly by extending the `k` grid downward: `k in {1, 2}`, same dataset,
 model, arms and 10 seeds, so the two grids read as one curve. **80 runs.**
+
+Sequencing note: run `phase1_holdout` first. Phase 1's results turned out to fall *monotonically*
+with `k`, which already argues against the headroom reading — limited headroom would make arm 4 look
+best at `k = 5`, where accuracy is lowest, and the observed ordering is the reverse. Worse, at
+`k = 1` the meta signal would be starved even harder than at `k = 5`, so this probe run on its own
+would confirm the deficit grows without being able to say why. Note `k = 1` is incompatible with
+`meta_holdout_frac` at all: withholding one of one example per fine class leaves nothing to train on.
 
 Note the outcome is informative either way, and the negative direction more so. If arm 4's deficit
 shrinks or reverses where accuracy is genuinely low, headroom was the constraint and there is a

@@ -176,6 +176,7 @@ def train_wamal_text(cfg, device, model, loaders, theta_optimizer, theta_schedul
         if cfg.needs_meta_step:
             meta_stats = _meta_epoch(
                 cfg, model, train_loader, device, phi_optimizer, inner_lr,
+                query_loader=loaders.get("meta"),
             )
 
         val = evaluate(cfg, model, loaders["val"], device)
@@ -380,12 +381,41 @@ def _train_epoch(cfg, model, loader, device, optimizer, inner_lr,
     }
 
 
-def _meta_epoch(cfg, model, loader, device, phi_optimizer, inner_lr) -> dict:
-    """Phase B: update phi against the primary loss measured at `theta+`."""
+def _query_batches(loader):
+    """Endless stream of query batches, restarting the loader when exhausted.
+
+    The query split is much smaller than the support split, so one training epoch
+    consumes it several times over. Built with `num_workers=0` upstream precisely
+    so that restarting is cheap.
+    """
+    while True:
+        empty = True
+        for batch in loader:
+            empty = False
+            yield batch
+        if empty:
+            raise RuntimeError("meta query loader is empty")
+
+
+def _meta_epoch(cfg, model, loader, device, phi_optimizer, inner_lr,
+                query_loader=None) -> dict:
+    """Phase B: update phi against the primary loss measured at `theta+`.
+
+    With no `query_loader` the outer loss is measured on the same batch that drove
+    the inner update, which is paper-faithful and what phase 1 ran. Its weakness
+    is that once theta has memorised the training set that loss is ~0 and phi
+    receives no gradient -- measured at 1e-5 by the halfway point of a k=5 run.
+
+    With a `query_loader`, the inner update still comes from the support batch
+    (phi can only act through the auxiliary loss on data theta trains on) but the
+    outer loss is measured on withheld data. That cannot be driven to zero by
+    memorisation, so phi keeps receiving signal for the whole run.
+    """
     model.train()
 
     before_sum = after_sum = entropy_sum = 0.0
-    total = 0
+    total = outer_total = 0
+    queries = _query_batches(query_loader) if query_loader is not None else None
 
     for batch in loader:
         batch = {k: v.to(device, non_blocking=True) for k, v in batch.items()}
@@ -409,10 +439,24 @@ def _meta_epoch(cfg, model, loader, device, phi_optimizer, inner_lr) -> dict:
         fast_weights = inner_sgd_update(model, total_loss, inner_lr,
                                         first_order=cfg.first_order)
 
+        # Where the outer loss is measured. Under holdout this is withheld data,
+        # so `before`/`after` describe generalisation rather than fit, and the
+        # pair stays informative after theta has memorised the support split.
+        outer = batch
+        if queries is not None:
+            outer = {k: v.to(device, non_blocking=True)
+                     for k, v in next(queries).items()}
+            with torch.no_grad():
+                pre_primary, _ = model.forward_primary(
+                    outer["input_ids"], outer["attention_mask"]
+                )
+                primary_loss = model_fit(pre_primary, outer["coarse"], device,
+                                         pri=True, num_output=cfg.num_primary)
+
         post_primary, _ = model.forward_primary(
-            batch["input_ids"], batch["attention_mask"], params=fast_weights
+            outer["input_ids"], outer["attention_mask"], params=fast_weights
         )
-        post_loss = model_fit(post_primary, batch["coarse"], device, pri=True,
+        post_loss = model_fit(post_primary, outer["coarse"], device, pri=True,
                               num_output=cfg.num_primary)
 
         objective = post_loss.mean() + cfg.entropy_loss_factor * entropy
@@ -426,14 +470,20 @@ def _meta_epoch(cfg, model, loader, device, phi_optimizer, inner_lr) -> dict:
         for param in model.theta_parameters():
             param.grad = None
 
+        # Two counters, because under holdout the outer loss is measured on a
+        # query batch whose size need not match the support batch. Averaging both
+        # over the same denominator would silently misreport the loss pair by the
+        # ratio of the two split sizes.
         before_sum += primary_loss.sum().item()
         after_sum += post_loss.sum().item()
+        outer_total += outer["coarse"].size(0)
         entropy_sum += entropy.item() * n
         total += n
 
     denom = max(total, 1)
+    outer_denom = max(outer_total, 1)
     return {
-        "loss_before": before_sum / denom,
-        "loss_after": after_sum / denom,
+        "loss_before": before_sum / outer_denom,
+        "loss_after": after_sum / outer_denom,
         "entropy": entropy_sum / denom,
     }

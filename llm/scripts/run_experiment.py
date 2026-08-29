@@ -46,6 +46,14 @@ def build_parser() -> argparse.ArgumentParser:
     meta.add_argument("--normalize-batch-weights", action="store_true")
     meta.add_argument("--first-order", action="store_true",
                       help="drop the second-order term; ablation and OOM escape hatch")
+    meta.add_argument("--meta-holdout-frac", type=float, default=0.0,
+                      help="withhold this fraction of the k-shot train subset from "
+                           "theta and use it as the meta objective's query set. 0 "
+                           "(default) measures the outer loss on the support batch, "
+                           "which is paper-faithful but saturates once theta has "
+                           "memorised the train set. Withheld from every arm, so "
+                           "baselines stay matched. Writes to a separate run "
+                           "directory; needs k >= 2.")
 
     net = p.add_argument_group("backbone")
     net.add_argument("--lora-r", type=int, default=16)
@@ -99,6 +107,7 @@ def config_from_args(args) -> ExperimentConfig:
         inner_lr=args.inner_lr,
         normalize_batch_weights=args.normalize_batch_weights,
         first_order=args.first_order,
+        meta_holdout_frac=args.meta_holdout_frac,
         lora_r=args.lora_r,
         lora_alpha=args.lora_alpha,
         lora_dropout=args.lora_dropout,

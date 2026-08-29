@@ -71,6 +71,21 @@ class ExperimentConfig:
     inner_lr: float | None = None       # defaults to primary_lr
     first_order: bool = False           # skip the second-order term (debug/ablation)
 
+    # Fraction of the k-shot training subset withheld from theta. At 0.0 (the
+    # default) the meta objective is the primary loss on the same batch theta was
+    # just fitted on, which is paper-faithful and what phase 1 ran.
+    #
+    # Phase 1 showed why that matters: the meta loss reaches ~1e-5 halfway through
+    # a k=5 run, so phi trains for only half the epochs, and the arms that learn
+    # labels do worst exactly where the meta signal dies soonest. Above 0.0 the
+    # withheld split becomes the meta objective's query set -- data theta never
+    # trains on, so the loss cannot be driven to zero by memorisation.
+    #
+    # The withheld examples leave theta's training set for *every* arm, not just
+    # the meta ones. Otherwise wamal would be compared against baselines that saw
+    # more data, and the deficit under test would be confounded by the split.
+    meta_holdout_frac: float = 0.0
+
     # --- backbone / adapters ----------------------------------------------
     lora_r: int = 16
     lora_alpha: int = 32
@@ -126,6 +141,23 @@ class ExperimentConfig:
                 f"{self.attn_implementation!r}. Fused attention kernels have no "
                 "double-backward and will fail partway through the first epoch."
             )
+
+        if not 0.0 <= self.meta_holdout_frac < 0.5:
+            raise ValueError(
+                f"meta_holdout_frac must be in [0.0, 0.5), got "
+                f"{self.meta_holdout_frac}. Withholding half or more of a "
+                "few-shot subset would change the experiment being run."
+            )
+        if self.meta_holdout_frac > 0:
+            # Stratified per fine class, so both splits cover every class. That
+            # needs at least one example on each side of the split.
+            held = max(1, round(self.shots * self.meta_holdout_frac))
+            if self.shots - held < 1:
+                raise ValueError(
+                    f"meta_holdout_frac={self.meta_holdout_frac} withholds {held} "
+                    f"of {self.shots} examples per fine class, leaving "
+                    f"{self.shots - held} to train on. Needs k >= 2."
+                )
 
         defaults = DATASET_DEFAULTS[self.dataset]
         if self.num_primary is None:
@@ -220,5 +252,22 @@ class ExperimentConfig:
             clean["lora_targets"] = tuple(clean["lora_targets"])
         return cls(**clean).resolve()
 
+    def variant(self) -> str:
+        """Method variant, for keeping incomparable runs apart.
+
+        `base` reproduces phase 1 exactly, so existing results keep their paths
+        and their place in every table. Anything else is a different method and
+        must never be averaged in with `base`: `aggregate` groups on this, and
+        `cell_id` puts it in the path so the two cannot even share a directory.
+        """
+        if self.meta_holdout_frac > 0:
+            return f"holdout{self.meta_holdout_frac:g}"
+        return "base"
+
     def cell_id(self) -> str:
-        return f"{self.dataset}/{self.model}/{self.arm}/k{self.shots}/seed{self.seed}"
+        # The variant rides on the arm segment because it is part of the method,
+        # not of the data. `base` is spelled as a bare arm so that the 200 phase-1
+        # run directories stay exactly where they are.
+        variant = self.variant()
+        arm = self.arm if variant == "base" else f"{self.arm}__{variant}"
+        return f"{self.dataset}/{self.model}/{arm}/k{self.shots}/seed{self.seed}"

@@ -80,3 +80,60 @@ class FewShotSubset(Dataset):
     def fine_labels(self) -> list[int]:
         base_fine = self.base.fine_labels
         return [base_fine[i] for i in self.indices]
+
+
+class IndexSubset(Dataset):
+    """A positional view onto another dataset, preserving `fine_labels`."""
+
+    def __init__(self, base: Dataset, positions: list[int]):
+        self.base = base
+        self.positions = list(positions)
+
+    def __len__(self) -> int:
+        return len(self.positions)
+
+    def __getitem__(self, idx: int):
+        return self.base[self.positions[idx]]
+
+    @property
+    def fine_labels(self) -> list[int]:
+        base_fine = self.base.fine_labels
+        return [base_fine[i] for i in self.positions]
+
+
+def stratified_holdout(subset: Dataset, frac: float, seed: int,
+                       dataset_name: str = "") -> tuple[list[int], list[int]]:
+    """Split positions of `subset` into (train, holdout), stratified by fine class.
+
+    Stratified rather than a flat random cut: a flat cut of a k=5 subset would
+    leave some of the 150 intents absent from one side, and both sides need every
+    intent -- the training side to keep the primary task balanced, the holdout
+    side because it is the meta objective's query set and a missing intent there
+    is a class phi never gets feedback on.
+
+    Deterministic in `(dataset, seed, frac)` for the same reason the few-shot
+    sampler is: two arms in one cell must see byte-identical splits, or any gap
+    between them confounds the method with the draw.
+    """
+    fine = np.asarray(subset.fine_labels)
+    rng = np.random.default_rng(derived_seed("meta_holdout", dataset_name, seed,
+                                            int(round(frac * 1000))))
+
+    train: list[int] = []
+    holdout: list[int] = []
+    for cls in np.unique(fine):
+        pool = np.flatnonzero(fine == cls)
+        held = max(1, round(len(pool) * frac))
+        if len(pool) - held < 1:
+            raise ValueError(
+                f"class {int(cls)} has {len(pool)} example(s); withholding "
+                f"{held} would leave nothing to train on"
+            )
+        picked = rng.choice(pool, size=held, replace=False)
+        held_set = set(int(i) for i in picked)
+        holdout.extend(sorted(held_set))
+        train.extend(int(i) for i in pool if int(i) not in held_set)
+
+    train.sort()
+    holdout.sort()
+    return train, holdout

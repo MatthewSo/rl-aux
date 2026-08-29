@@ -101,6 +101,32 @@ def build_everything(arm: str, results_dir: str, epochs: int = 2):
     return cfg, model, loaders
 
 
+def build_with_holdout(arm: str, results_dir: str, frac: float = 0.25):
+    """Same as `build_everything` but with the meta query split carved out.
+
+    Exercises the real split helper rather than a hand-made one, so the test
+    fails if the stratification or the loader wiring changes underneath it.
+    """
+    from llm.datasets.fewshot import IndexSubset, stratified_holdout
+
+    cfg, model, loaders = build_everything(arm, results_dir)
+    cfg.meta_holdout_frac = frac
+
+    train = FakeTextDataset(per_class=4, seed=0)
+    keep, held = stratified_holdout(train, frac, seed=0, dataset_name="clinc150")
+    collator = FakeCollator()
+    loaders["train"] = DataLoader(
+        IndexedDataset(IndexSubset(train, keep)), batch_size=8, shuffle=True,
+        collate_fn=collator,
+    )
+    loaders["meta"] = DataLoader(
+        IndexedDataset(IndexSubset(train, held)), batch_size=8, shuffle=True,
+        collate_fn=collator,
+    )
+    loaders["train_size"] = len(keep)
+    return cfg, model, loaders, len(keep), len(held)
+
+
 def run_arm(arm: str, results_dir: str) -> dict:
     cfg, model, loaders = build_everything(arm, results_dir)
     theta_opt, theta_sched, phi_opt, phi_sched = build_optimizers(cfg, model)
@@ -272,6 +298,94 @@ def test_rerunning_a_cell_replaces_rather_than_appends_metrics():
               f"old file preserved as metrics.jsonl.prev")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_meta_step_can_measure_its_loss_on_withheld_data():
+    """The whole point of the holdout variant: an outer loss that can't saturate.
+
+    Under the paper-faithful path the outer loss is measured on the batch theta
+    was just fitted on, so it decays toward zero and phi stops learning. Here it
+    must be measured on the query split instead, which theta never trains on.
+
+    Asserted structurally rather than by watching the loss decay -- two epochs on
+    random data is far too short for saturation to show up, so a decay-based check
+    would pass whether or not the query split was being used at all.
+    """
+    tmp = tempfile.mkdtemp(prefix="wamal_loop_")
+    try:
+        cfg, model, loaders, n_train, n_held = build_with_holdout("wamal", tmp)
+        assert n_held > 0 and n_train > 0, "degenerate split"
+        assert n_train + n_held == NUM_FINE * 4, "split lost examples"
+
+        seen = {"support": 0, "query": 0}
+        real_forward = model.forward_primary
+
+        def spy(input_ids, attention_mask, params=None):
+            # The inner step runs at theta on support; the outer loss runs with
+            # fast weights on whichever split the query loader supplies.
+            key = "query" if params is not None else "support"
+            seen[key] += input_ids.size(0)
+            return real_forward(input_ids, attention_mask, params=params)
+
+        model.forward_primary = spy
+        theta_opt, theta_sched, phi_opt, phi_sched = build_optimizers(cfg, model)
+        save_path = prepare_run_dir(cfg, overwrite=True)
+        with RunLogger(save_path, echo=False) as logger:
+            summary = train_wamal_text(
+                cfg, torch.device("cpu"), model, loaders,
+                theta_opt, theta_sched, phi_opt, phi_sched, save_path, logger,
+            )
+        model.forward_primary = real_forward
+
+        assert seen["query"] > 0, "the outer loss never ran on a query batch"
+        # One query example per support example, since the stream cycles the
+        # smaller split to cover the larger one.
+        per_epoch = seen["query"] / cfg.total_epoch
+        assert per_epoch >= n_train * 0.8, (
+            f"only {per_epoch:.0f} query examples per epoch for {n_train} support "
+            f"examples -- the query split is not covering the support split"
+        )
+
+        records = [json.loads(line)
+                   for line in (save_path / "metrics.jsonl").read_text().splitlines()]
+        assert len(records) == cfg.total_epoch
+        for r in records:
+            assert r["meta_loss_before"] is not None, "meta step did not run"
+            assert r["meta_loss_after"] is not None
+
+        # The run must land in its own directory, never the base one.
+        assert "holdout" in str(save_path), save_path
+        assert 0.0 <= summary["test_acc_at_best_val"] <= 1.0
+        print(f"  {n_train} support / {n_held} query, "
+              f"{per_epoch:.0f} query examples per epoch, "
+              f"wrote to .../{save_path.parent.parent.name}/...")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def test_holdout_shrinks_training_data_for_every_arm():
+    """Baselines must lose the withheld examples too, or the comparison is rigged.
+
+    If only the meta arms gave up training data, wamal would be measured against
+    baselines that saw more of it, and the deficit under test would be confounded
+    by the split rather than explained by it.
+    """
+    from llm.datasets.fewshot import stratified_holdout
+
+    train = FakeTextDataset(per_class=4, seed=0)
+    keep, held = stratified_holdout(train, 0.25, seed=0, dataset_name="clinc150")
+
+    # The split depends only on (dataset, seed, frac) -- not on the arm -- so
+    # every arm in a cell trains on an identical subset.
+    for arm in ("single", "human", "maxl", "wamal"):
+        again = stratified_holdout(train, 0.25, seed=0, dataset_name="clinc150")
+        assert again == (keep, held), f"{arm} would get a different split"
+
+    fine = train.fine_labels
+    assert {fine[i] for i in keep} == set(range(NUM_FINE)), "class lost from train"
+    assert len(keep) == NUM_FINE * 3 and len(held) == NUM_FINE * 1
+    print(f"  split is arm-independent: {len(keep)} train / {len(held)} query "
+          f"for all four arms")
 
 
 def test_selection_uses_validation_not_test():

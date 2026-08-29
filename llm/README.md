@@ -43,12 +43,28 @@ python -m llm.scripts.sweep --phase phase2 --gpus 0,1,2,3 --pack 4 --keep-going
 ```
 
 Phases are `smoke`, `phase0` (LR calibration), `phase1` (signal check, 200 cells),
-`phase1_lowk` (extends phase 1's k grid down to 1 and 2 shots, 80 cells), `phase2`
-(main result, 400) and `phase3` (robustness). `phase1_lowk` exists because phase 1
-runs on a task already at 90.6% accuracy with k=5, leaving ~7pp of range for a
-method to work in; it asks whether the arm ordering changes where accuracy is
-genuinely low. Its cells cost *more* than k=5, not less — per-epoch cost is about
-`3.0 + 0.33k` seconds, so the larger epoch budget outweighs the smaller train set.
+`phase1_holdout` (saturation control, 40 cells), `phase1_lowk` (extends phase 1's k
+grid down to 1 and 2 shots, 80 cells), `phase2` (main result, 400) and `phase3`
+(robustness).
+
+`phase1_holdout` follows from what phase 1 measured. The meta objective is the
+primary loss on the batch theta was just fitted on, so it decays to ~1e-5 halfway
+through a k=5 run and phi stops learning. How much of each run keeps live signal
+rises with k — 50% at k=5, 87% at k=100 — and that is the same ordering as wamal's
+results, which go from −1.12pp against single at k=5 to +0.07pp at k=100. So this
+phase measures the outer loss on withheld data (`--meta-holdout-frac 0.2`), which
+cannot be memorised. **Read `aux_recovery` before accuracy**: it asks directly
+whether phi finds real sub-structure once its objective stops saturating, and it is
+not confounded by the smaller training set. The withheld examples leave theta's
+training set for *every* arm, so the baselines stay matched.
+
+`phase1_lowk` asks a different question — phase 1 runs on a task already at 90.6%
+at k=5, leaving ~7pp of range — but run it *after* `phase1_holdout`. Phase 1's
+deficit shrinks monotonically as k grows, which is backwards from a headroom story,
+and at k=1 the meta signal is starved harder still, so on its own the probe cannot
+separate the two explanations. Its cells also cost *more* than k=5, not less:
+per-epoch cost is about `3.0 + 0.33k` seconds, so the larger epoch budget outweighs
+the smaller train set.
 
 **Before destroying the instance:**
 
