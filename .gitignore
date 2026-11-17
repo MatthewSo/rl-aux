@@ -33,3 +33,7 @@ data/
 .DS_Store
 .idea/
 .vscode/
+
+# new_wamal outputs
+results_new/
+results_new_*.log
